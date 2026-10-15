@@ -57,6 +57,7 @@ function toLimit(v: any): OfficialLimit | null {
 export class OfficialUsageClient {
   private last?: OfficialUsage
   private backoffUntil = 0
+  private strikes = 0
 
   constructor(
     private deps: { credentials: () => Promise<Credentials | null>; fetch: typeof fetch; now: () => number } = {
@@ -83,9 +84,15 @@ export class OfficialUsageClient {
         headers: { authorization: `Bearer ${cred.accessToken}`, 'anthropic-beta': 'oauth-2025-04-20', 'user-agent': 'claudeboard' },
         signal: AbortSignal.timeout(10_000)
       })
-      if (res.status === 429) this.backoffUntil = now + 5 * 60_000
+      if (res.status === 429) {
+        // Retry-After(초)가 있으면 따르되, 연속 실패 시 5분→10분→…→30분으로 늘린다
+        const hinted = Number(res.headers.get('retry-after')) * 1000
+        const wait = Math.min(5 * 60_000 * 2 ** this.strikes++, 30 * 60_000)
+        this.backoffUntil = now + (Number.isFinite(hinted) && hinted > wait ? hinted : wait)
+      }
       if (!res.ok) return fail(`사용량 조회 실패 (HTTP ${res.status})`)
       const j: any = await res.json()
+      this.strikes = 0
       return (this.last = {
         status: 'ok',
         plan,
