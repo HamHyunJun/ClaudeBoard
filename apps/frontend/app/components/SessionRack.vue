@@ -1,3 +1,38 @@
+<template>
+  <section class="rack" aria-labelledby="rack-title" @keydown="onKeydown">
+    <header class="rack-head">
+      <h2 id="rack-title">세션</h2>
+      <p class="hint">
+        <kbd>↑</kbd><kbd>↓</kbd> 이동 <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> 순서 변경 <kbd>t</kbd> 터미널 <kbd>/</kbd> 지시하기
+      </p>
+      <button class="add" type="button" @click="emit('add')">프로젝트 추가</button>
+    </header>
+
+    <ol v-if="cmd.sessionList.value.length" ref="listEl" class="list">
+      <li v-for="item in cmd.sessionList.value" :key="item.project.id">
+        <SessionStrip
+          :ref="(el) => setStrip(item.project.id, el)"
+          :project="item.project"
+          :session="item.session"
+          :usage="usageById[item.project.id]"
+          :selected="cmd.selectedId.value === item.project.id"
+          :hog-threshold="hogThreshold"
+          @select="select(item.project.id)"
+          @open="cmd.openTerminal(item.project.id)"
+        />
+      </li>
+    </ol>
+
+    <div v-else class="empty">
+      <p class="empty-title">관제할 프로젝트가 없습니다</p>
+      <p class="empty-body">
+        Claude Code를 실행할 로컬 디렉터리를 추가하면 이곳에 세션이 한 줄씩 쌓입니다.
+      </p>
+      <button class="add big" type="button" @click="emit('add')">첫 프로젝트 추가</button>
+    </div>
+  </section>
+</template>
+
 <script setup lang="ts">
 import SessionStrip from './SessionStrip.vue'
 
@@ -58,41 +93,6 @@ defineExpose({
   }
 })
 </script>
-
-<template>
-  <section class="rack" aria-labelledby="rack-title" @keydown="onKeydown">
-    <header class="rack-head">
-      <h2 id="rack-title">세션</h2>
-      <p class="hint">
-        <kbd>↑</kbd><kbd>↓</kbd> 이동 <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> 순서 변경 <kbd>t</kbd> 터미널 <kbd>/</kbd> 지시하기
-      </p>
-      <button class="add" type="button" @click="emit('add')">프로젝트 추가</button>
-    </header>
-
-    <ol v-if="cmd.sessionList.value.length" ref="listEl" class="list">
-      <li v-for="item in cmd.sessionList.value" :key="item.project.id">
-        <SessionStrip
-          :ref="(el) => setStrip(item.project.id, el)"
-          :project="item.project"
-          :session="item.session"
-          :usage="usageById[item.project.id]"
-          :selected="cmd.selectedId.value === item.project.id"
-          :hog-threshold="hogThreshold"
-          @select="select(item.project.id)"
-          @open="cmd.openTerminal(item.project.id)"
-        />
-      </li>
-    </ol>
-
-    <div v-else class="empty">
-      <p class="empty-title">관제할 프로젝트가 없습니다</p>
-      <p class="empty-body">
-        Claude Code를 실행할 로컬 디렉터리를 추가하면 이곳에 세션이 한 줄씩 쌓입니다.
-      </p>
-      <button class="add big" type="button" @click="emit('add')">첫 프로젝트 추가</button>
-    </div>
-  </section>
-</template>
 
 <style scoped lang="scss">
 .rack {

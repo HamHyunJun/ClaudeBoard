@@ -1,3 +1,12 @@
+<template>
+  <div class="xterm-wrap" :aria-busy="!ready">
+    <div ref="host" class="xterm-host" :class="{ pending: !ready }" />
+    <div v-if="!ready" class="skeleton" aria-hidden="true">
+      <span v-for="w in SKELETON" :key="w" :style="{ width: w }" />
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -176,15 +185,6 @@ onBeforeUnmount(() => {
 
 defineExpose({ focus: () => term?.focus() })
 </script>
-
-<template>
-  <div class="xterm-wrap" :aria-busy="!ready">
-    <div ref="host" class="xterm-host" :class="{ pending: !ready }" />
-    <div v-if="!ready" class="skeleton" aria-hidden="true">
-      <span v-for="w in SKELETON" :key="w" :style="{ width: w }" />
-    </div>
-  </div>
-</template>
 
 <style scoped lang="scss">
 .xterm-wrap {

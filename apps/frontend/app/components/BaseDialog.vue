@@ -1,3 +1,15 @@
+<template>
+  <Teleport to="body">
+    <Transition name="dialog">
+      <div v-if="open" class="backdrop" :class="placement ?? 'center'" @mousedown.self="emit('close')">
+        <div ref="panel" class="panel" role="dialog" aria-modal="true" :aria-labelledby="labelledby" @keydown="trap">
+          <slot />
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
+
 <script setup lang="ts">
 /**
  * 공용 모달. 배경은 페이드, 패널은 스프링으로 살짝 튀며 등장한다.
@@ -43,18 +55,6 @@ function trap(e: KeyboardEvent) {
   }
 }
 </script>
-
-<template>
-  <Teleport to="body">
-    <Transition name="dialog">
-      <div v-if="open" class="backdrop" :class="placement ?? 'center'" @mousedown.self="emit('close')">
-        <div ref="panel" class="panel" role="dialog" aria-modal="true" :aria-labelledby="labelledby" @keydown="trap">
-          <slot />
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-</template>
 
 <style scoped lang="scss">
 .backdrop {

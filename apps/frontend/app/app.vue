@@ -1,50 +1,3 @@
-<script setup lang="ts">
-/**
- * 화면 구성: 상단 헤더 → 승인 배너 → [사용량 레일 | 세션 스트립 랙 | 터미널 패널]
- */
-const cmd = useCommander()
-const notify = useNotify()
-const paletteOpen = ref(false)
-const addOpen = ref(false)
-const rack = ref<{ focusPrompt: (id: string) => void }>()
-
-// 서버 알림 → 토스트 + 데스크톱 알림 (승인 요청은 상단 배너가 담당하므로 토스트 생략)
-// 핸들러는 모듈 전역에 남으므로, 해제하지 않으면 화면이 다시 마운트될 때마다(HMR 포함) 알림이 겹쳐 뜬다
-let offAlert: (() => void) | undefined
-onMounted(() => {
-  offAlert = cmd.onAlert((a) => {
-    if (a.kind !== 'approval') notify.toast({ level: a.level, title: a.title, body: a.body, projectId: a.projectId })
-    notify.desktop(a, () => a.projectId && cmd.openTerminal(a.projectId))
-  })
-})
-onBeforeUnmount(() => offAlert?.())
-
-function onGlobalKey(e: KeyboardEvent) {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault()
-    paletteOpen.value = !paletteOpen.value
-    return
-  }
-  // xterm 안의 Esc 는 Claude Code(작업 중단)로, 입력창의 Esc 는 입력 해제용이라 터미널을 접지 않는다
-  if (e.key === 'Escape' && cmd.terminalOpen.value && !paletteOpen.value && !addOpen.value) {
-    if ((e.target as HTMLElement)?.closest?.('.xterm, input, textarea')) return
-    cmd.terminalOpen.value = false
-  }
-}
-const hasTerminal = computed(() => !!cmd.terminalTarget.value)
-const termOpen = computed(() => cmd.terminalOpen.value && hasTerminal.value)
-onMounted(() => window.addEventListener('keydown', onGlobalKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
-
-useHead({
-  title: computed(() => {
-    const { approval, asking } = cmd.counts.value
-    const n = approval + asking
-    return n ? `(${n}) ${approval ? '승인' : '답변'} 대기 | ClaudeBoard` : 'ClaudeBoard'
-  })
-})
-</script>
-
 <template>
   <div class="shell" :class="{ 'has-terminal': hasTerminal, 'term-open': termOpen }">
     <a class="skip" href="#rack-title">세션 목록으로 건너뛰기</a>
@@ -92,6 +45,53 @@ useHead({
     <ToastStack />
   </div>
 </template>
+
+<script setup lang="ts">
+/**
+ * 화면 구성: 상단 헤더 → 승인 배너 → [사용량 레일 | 세션 스트립 랙 | 터미널 패널]
+ */
+const cmd = useCommander()
+const notify = useNotify()
+const paletteOpen = ref(false)
+const addOpen = ref(false)
+const rack = ref<{ focusPrompt: (id: string) => void }>()
+
+// 서버 알림 → 토스트 + 데스크톱 알림 (승인 요청은 상단 배너가 담당하므로 토스트 생략)
+// 핸들러는 모듈 전역에 남으므로, 해제하지 않으면 화면이 다시 마운트될 때마다(HMR 포함) 알림이 겹쳐 뜬다
+let offAlert: (() => void) | undefined
+onMounted(() => {
+  offAlert = cmd.onAlert((a) => {
+    if (a.kind !== 'approval') notify.toast({ level: a.level, title: a.title, body: a.body, projectId: a.projectId })
+    notify.desktop(a, () => a.projectId && cmd.openTerminal(a.projectId))
+  })
+})
+onBeforeUnmount(() => offAlert?.())
+
+function onGlobalKey(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    paletteOpen.value = !paletteOpen.value
+    return
+  }
+  // xterm 안의 Esc 는 Claude Code(작업 중단)로, 입력창의 Esc 는 입력 해제용이라 터미널을 접지 않는다
+  if (e.key === 'Escape' && cmd.terminalOpen.value && !paletteOpen.value && !addOpen.value) {
+    if ((e.target as HTMLElement)?.closest?.('.xterm, input, textarea')) return
+    cmd.terminalOpen.value = false
+  }
+}
+const hasTerminal = computed(() => !!cmd.terminalTarget.value)
+const termOpen = computed(() => cmd.terminalOpen.value && hasTerminal.value)
+onMounted(() => window.addEventListener('keydown', onGlobalKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
+
+useHead({
+  title: computed(() => {
+    const { approval, asking } = cmd.counts.value
+    const n = approval + asking
+    return n ? `(${n}) ${approval ? '승인' : '답변'} 대기 | ClaudeBoard` : 'ClaudeBoard'
+  })
+})
+</script>
 
 <style scoped lang="scss">
 .shell {

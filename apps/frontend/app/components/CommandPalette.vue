@@ -1,3 +1,50 @@
+<template>
+  <BaseDialog :open="open" labelledby="cp-label" placement="top" @close="emit('close')">
+    <div class="palette">
+      <label id="cp-label" for="cp-input" class="sr-only">명령 검색</label>
+      <div class="search">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+        <input
+          id="cp-input"
+          v-model="query"
+          type="text"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="cp-list"
+          :aria-activedescendant="items.length ? `cp-opt-${active}` : undefined"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="명령 검색, 또는 @프로젝트 지시문"
+          autofocus
+          @keydown="onKey"
+        />
+        <kbd>esc</kbd>
+      </div>
+
+      <div id="cp-list" class="list" role="listbox" aria-label="명령">
+        <template v-for="[group, entries] in groups" :key="group">
+          <p class="group" role="presentation">{{ group }}</p>
+          <div
+            v-for="{ item, index } in entries"
+            :id="`cp-opt-${index}`"
+            :key="item.id"
+            role="option"
+            class="opt"
+            :class="{ active: index === active }"
+            :aria-selected="index === active"
+            @mousemove="active = index"
+            @click="run(item)"
+          >
+            <span>{{ item.label }}</span>
+            <span v-if="item.hint" class="hint">{{ item.hint }}</span>
+          </div>
+        </template>
+        <p v-if="!items.length" class="none">일치하는 명령이 없습니다. "@이름 지시문" 형식으로 세션에 바로 보낼 수 있습니다.</p>
+      </div>
+    </div>
+  </BaseDialog>
+</template>
+
 <script setup lang="ts">
 /**
  * ⌘K / Ctrl+K 글로벌 명령창.
@@ -115,53 +162,6 @@ function onKey(e: KeyboardEvent) {
 
 watch(active, (i) => nextTick(() => document.getElementById(`cp-opt-${i}`)?.scrollIntoView({ block: 'nearest' })))
 </script>
-
-<template>
-  <BaseDialog :open="open" labelledby="cp-label" placement="top" @close="emit('close')">
-    <div class="palette">
-      <label id="cp-label" for="cp-input" class="sr-only">명령 검색</label>
-      <div class="search">
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
-        <input
-          id="cp-input"
-          v-model="query"
-          type="text"
-          role="combobox"
-          aria-expanded="true"
-          aria-controls="cp-list"
-          :aria-activedescendant="items.length ? `cp-opt-${active}` : undefined"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="명령 검색, 또는 @프로젝트 지시문"
-          autofocus
-          @keydown="onKey"
-        />
-        <kbd>esc</kbd>
-      </div>
-
-      <div id="cp-list" class="list" role="listbox" aria-label="명령">
-        <template v-for="[group, entries] in groups" :key="group">
-          <p class="group" role="presentation">{{ group }}</p>
-          <div
-            v-for="{ item, index } in entries"
-            :id="`cp-opt-${index}`"
-            :key="item.id"
-            role="option"
-            class="opt"
-            :class="{ active: index === active }"
-            :aria-selected="index === active"
-            @mousemove="active = index"
-            @click="run(item)"
-          >
-            <span>{{ item.label }}</span>
-            <span v-if="item.hint" class="hint">{{ item.hint }}</span>
-          </div>
-        </template>
-        <p v-if="!items.length" class="none">일치하는 명령이 없습니다. "@이름 지시문" 형식으로 세션에 바로 보낼 수 있습니다.</p>
-      </div>
-    </div>
-  </BaseDialog>
-</template>
 
 <style scoped lang="scss">
 .palette {

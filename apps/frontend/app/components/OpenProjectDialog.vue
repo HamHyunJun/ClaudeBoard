@@ -1,3 +1,29 @@
+<template>
+  <BaseDialog :open="open" labelledby="open-title" @close="close">
+    <form class="form" @submit.prevent="submit">
+      <h2 id="open-title">폴더 열기</h2>
+      <p class="lead">
+        <code>{{ project?.cwd }}</code>
+      </p>
+
+      <fieldset class="apps">
+        <legend>열 응용 프로그램</legend>
+        <label v-for="a in OPEN_APPS" :key="a.id" class="app" :class="{ on: app === a.id }">
+          <input v-model="app" type="radio" name="open-app" :value="a.id" />
+          <span>{{ a.label }}</span>
+        </label>
+      </fieldset>
+
+      <p class="error" role="alert">{{ error }}</p>
+
+      <div class="actions">
+        <button type="button" class="btn" @click="close">취소</button>
+        <button type="submit" class="btn primary" :disabled="opening">{{ opening ? '여는 중' : '열기' }}</button>
+      </div>
+    </form>
+  </BaseDialog>
+</template>
+
 <script setup lang="ts">
 /** 프로젝트 폴더를 어떤 응용 프로그램으로 열지 확인받고 실행한다 */
 import { OPEN_APPS, type OpenAppId } from '@claudeboard/shared'
@@ -48,32 +74,6 @@ async function submit() {
   }
 }
 </script>
-
-<template>
-  <BaseDialog :open="open" labelledby="open-title" @close="close">
-    <form class="form" @submit.prevent="submit">
-      <h2 id="open-title">폴더 열기</h2>
-      <p class="lead">
-        <code>{{ project?.cwd }}</code>
-      </p>
-
-      <fieldset class="apps">
-        <legend>열 응용 프로그램</legend>
-        <label v-for="a in OPEN_APPS" :key="a.id" class="app" :class="{ on: app === a.id }">
-          <input v-model="app" type="radio" name="open-app" :value="a.id" />
-          <span>{{ a.label }}</span>
-        </label>
-      </fieldset>
-
-      <p class="error" role="alert">{{ error }}</p>
-
-      <div class="actions">
-        <button type="button" class="btn" @click="close">취소</button>
-        <button type="submit" class="btn primary" :disabled="opening">{{ opening ? '여는 중' : '열기' }}</button>
-      </div>
-    </form>
-  </BaseDialog>
-</template>
 
 <style scoped lang="scss">
 .form {

@@ -1,3 +1,7 @@
+<template>
+  <span class="pulse" :class="cls" :style="{ '--size': `${size ?? 10}px` }" aria-hidden="true" />
+</template>
+
 <script setup lang="ts">
 import type { SessionStatus } from '@claudeboard/shared'
 
@@ -5,10 +9,6 @@ import type { SessionStatus } from '@claudeboard/shared'
 const props = defineProps<{ status: SessionStatus; offline?: boolean; size?: number }>()
 const cls = computed(() => (props.offline ? 'offline' : STATUS_CLASS[props.status]))
 </script>
-
-<template>
-  <span class="pulse" :class="cls" :style="{ '--size': `${size ?? 10}px` }" aria-hidden="true" />
-</template>
 
 <style scoped lang="scss">
 .pulse {

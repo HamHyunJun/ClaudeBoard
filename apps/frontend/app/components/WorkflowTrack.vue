@@ -1,3 +1,22 @@
+<template>
+  <div
+    class="track"
+    :class="[tone, { compact, empty: workflow.source === 'none', indeterminate }]"
+    role="progressbar"
+    aria-label="워크플로우 진행률"
+    :aria-valuenow="indeterminate ? undefined : workflow.percent"
+    :aria-valuemin="indeterminate ? undefined : 0"
+    :aria-valuemax="indeterminate ? undefined : 100"
+    :aria-valuetext="valueText"
+  >
+    <div v-for="seg in segments" :key="seg.stage" class="seg" :class="{ current: seg.current, done: seg.done }">
+      <div class="bar"><span class="fill" :style="{ transform: `scaleX(${seg.fill})` }" /></div>
+      <span v-if="!compact" class="label">{{ seg.label }}</span>
+    </div>
+    <span v-if="!compact" class="pct">{{ workflow.source !== 'none' ? `${workflow.percent}%` : elapsed || '—' }}</span>
+  </div>
+</template>
+
 <script setup lang="ts">
 import type { SessionStatus, WorkflowProgress } from '@claudeboard/shared'
 import { WORKFLOW_STAGES } from '@claudeboard/shared'
@@ -34,25 +53,6 @@ const valueText = computed(() => {
   return `${stage} 단계, ${w.percent}%${todos}`
 })
 </script>
-
-<template>
-  <div
-    class="track"
-    :class="[tone, { compact, empty: workflow.source === 'none', indeterminate }]"
-    role="progressbar"
-    aria-label="워크플로우 진행률"
-    :aria-valuenow="indeterminate ? undefined : workflow.percent"
-    :aria-valuemin="indeterminate ? undefined : 0"
-    :aria-valuemax="indeterminate ? undefined : 100"
-    :aria-valuetext="valueText"
-  >
-    <div v-for="seg in segments" :key="seg.stage" class="seg" :class="{ current: seg.current, done: seg.done }">
-      <div class="bar"><span class="fill" :style="{ transform: `scaleX(${seg.fill})` }" /></div>
-      <span v-if="!compact" class="label">{{ seg.label }}</span>
-    </div>
-    <span v-if="!compact" class="pct">{{ workflow.source !== 'none' ? `${workflow.percent}%` : elapsed || '—' }}</span>
-  </div>
-</template>
 
 <style scoped lang="scss">
 .track {

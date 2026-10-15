@@ -1,3 +1,71 @@
+<template>
+  <BaseDialog :open="open" labelledby="add-title" @close="emit('close')">
+    <form class="form" novalidate @submit.prevent="submit">
+      <h2 id="add-title">프로젝트 추가</h2>
+      <p class="lead">이 디렉터리에서 Claude Code를 백그라운드로 실행하고 대시보드에 연결합니다.</p>
+
+      <div class="field">
+        <label for="f-cwd">프로젝트 경로</label>
+        <div class="path-row">
+          <input
+            id="f-cwd"
+            v-model="form.cwd"
+            class="code"
+            type="text"
+            autofocus
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="~/work/payments-api"
+            :aria-invalid="!!error"
+            aria-describedby="f-cwd-help f-error"
+          />
+          <button type="button" class="btn" :aria-expanded="browsing" aria-controls="dir-browser" @click="toggleBrowse">
+            {{ browsing ? '닫기' : '찾아보기' }}
+          </button>
+        </div>
+        <p id="f-cwd-help" class="help">백엔드가 실행 중인 컴퓨터의 절대 경로 또는 ~ 로 시작하는 경로</p>
+
+        <div v-if="browsing" id="dir-browser" class="browser" role="group" aria-label="폴더 찾아보기">
+          <div class="crumb">
+            <button type="button" class="up" :disabled="!listing?.parent" aria-label="상위 폴더" @click="browse(listing!.parent!)">↑</button>
+            <code class="here" :title="listing?.path">{{ listing?.path ?? '…' }}</code>
+          </div>
+          <ul ref="listEl" class="dirs" aria-label="하위 폴더">
+            <li v-for="d in listing?.dirs" :key="d">
+              <button type="button" class="dir" @click="browse(listing!.path.replace(/\/$/, '') + '/' + d)">{{ d }}</button>
+            </li>
+          </ul>
+          <p v-if="listing && !listing.dirs.length" class="empty">하위 폴더가 없습니다.</p>
+          <p class="browse-error" role="alert">{{ browseError }}</p>
+          <button type="button" class="btn primary pick" :disabled="!listing" @click="pick">이 폴더 선택</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-name">표시 이름 <span class="opt">선택</span></label>
+        <input id="f-name" v-model="form.name" type="text" autocomplete="off" placeholder="비우면 폴더 이름을 씁니다" />
+      </div>
+
+      <div class="field">
+        <label for="f-cmd">실행 명령 <span class="opt">선택</span></label>
+        <input id="f-cmd" v-model="form.command" class="code" type="text" autocomplete="off" spellcheck="false" placeholder="claude" />
+      </div>
+
+      <label class="check">
+        <input v-model="form.autoStart" type="checkbox" />
+        <span>추가하자마자 세션 시작</span>
+      </label>
+
+      <p id="f-error" class="error" role="alert">{{ error }}</p>
+
+      <div class="actions">
+        <button type="button" class="btn" @click="emit('close')">취소</button>
+        <button type="submit" class="btn primary" :disabled="saving">{{ saving ? '추가하는 중' : '프로젝트 추가' }}</button>
+      </div>
+    </form>
+  </BaseDialog>
+</template>
+
 <script setup lang="ts">
 /** 로컬 디렉터리를 관제 대상 프로젝트로 등록한다 */
 import type { DirListing } from '@claudeboard/shared'
@@ -78,74 +146,6 @@ async function submit() {
   }
 }
 </script>
-
-<template>
-  <BaseDialog :open="open" labelledby="add-title" @close="emit('close')">
-    <form class="form" novalidate @submit.prevent="submit">
-      <h2 id="add-title">프로젝트 추가</h2>
-      <p class="lead">이 디렉터리에서 Claude Code를 백그라운드로 실행하고 대시보드에 연결합니다.</p>
-
-      <div class="field">
-        <label for="f-cwd">프로젝트 경로</label>
-        <div class="path-row">
-          <input
-            id="f-cwd"
-            v-model="form.cwd"
-            class="code"
-            type="text"
-            autofocus
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="~/work/payments-api"
-            :aria-invalid="!!error"
-            aria-describedby="f-cwd-help f-error"
-          />
-          <button type="button" class="btn" :aria-expanded="browsing" aria-controls="dir-browser" @click="toggleBrowse">
-            {{ browsing ? '닫기' : '찾아보기' }}
-          </button>
-        </div>
-        <p id="f-cwd-help" class="help">백엔드가 실행 중인 컴퓨터의 절대 경로 또는 ~ 로 시작하는 경로</p>
-
-        <div v-if="browsing" id="dir-browser" class="browser" role="group" aria-label="폴더 찾아보기">
-          <div class="crumb">
-            <button type="button" class="up" :disabled="!listing?.parent" aria-label="상위 폴더" @click="browse(listing!.parent!)">↑</button>
-            <code class="here" :title="listing?.path">{{ listing?.path ?? '…' }}</code>
-          </div>
-          <ul ref="listEl" class="dirs" aria-label="하위 폴더">
-            <li v-for="d in listing?.dirs" :key="d">
-              <button type="button" class="dir" @click="browse(listing!.path.replace(/\/$/, '') + '/' + d)">{{ d }}</button>
-            </li>
-          </ul>
-          <p v-if="listing && !listing.dirs.length" class="empty">하위 폴더가 없습니다.</p>
-          <p class="browse-error" role="alert">{{ browseError }}</p>
-          <button type="button" class="btn primary pick" :disabled="!listing" @click="pick">이 폴더 선택</button>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="f-name">표시 이름 <span class="opt">선택</span></label>
-        <input id="f-name" v-model="form.name" type="text" autocomplete="off" placeholder="비우면 폴더 이름을 씁니다" />
-      </div>
-
-      <div class="field">
-        <label for="f-cmd">실행 명령 <span class="opt">선택</span></label>
-        <input id="f-cmd" v-model="form.command" class="code" type="text" autocomplete="off" spellcheck="false" placeholder="claude" />
-      </div>
-
-      <label class="check">
-        <input v-model="form.autoStart" type="checkbox" />
-        <span>추가하자마자 세션 시작</span>
-      </label>
-
-      <p id="f-error" class="error" role="alert">{{ error }}</p>
-
-      <div class="actions">
-        <button type="button" class="btn" @click="emit('close')">취소</button>
-        <button type="submit" class="btn primary" :disabled="saving">{{ saving ? '추가하는 중' : '프로젝트 추가' }}</button>
-      </div>
-    </form>
-  </BaseDialog>
-</template>
 
 <style scoped lang="scss">
 .form {
