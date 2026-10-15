@@ -154,9 +154,19 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req))
   })
 
+  // 데모에서는 실제 계정을 건드리지 않는다
+  const official = new OfficialUsageClient()
+  let lastPolledAt = 0
+  async function pollOfficial() {
+    lastPolledAt = Date.now()
+    usage.setOfficial(await official.poll())
+  }
+
   wss.on('connection', (ws: WebSocket) => {
     const client: Client = { ws, subs: new Set() }
     clients.add(client)
+    // 창을 새로 열 때마다 최신 한도를 바로 받아온다 (연타·새로고침 폭주는 15초 간격으로 제한)
+    if (!cfg.demo && Date.now() - lastPolledAt > 15_000) void pollOfficial()
     send(ws, {
       t: 'hello',
       serverVersion: SERVER_VERSION,
@@ -226,9 +236,6 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   syncProjects()
   usage.start()
 
-  // 데모에서는 실제 계정을 건드리지 않는다
-  const official = new OfficialUsageClient()
-  const pollOfficial = async () => usage.setOfficial(await official.poll())
   const officialTimer = cfg.demo ? undefined : setInterval(pollOfficial, 60_000)
   officialTimer?.unref()
   if (!cfg.demo) void pollOfficial()

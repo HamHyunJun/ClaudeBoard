@@ -241,6 +241,7 @@ export class Session extends EventEmitter {
       status: screen.status,
       activeTool: screen.activeTool,
       lastLine: screen.lastLine?.slice(0, 200),
+      git: screen.git ?? prev.git,
       workflow,
       lastOutputAt: now,
       approval: screen.approval

@@ -112,3 +112,12 @@ test('하단 상태줄(HUD)은 마지막 출력으로 잡지 않는다', () => {
   ])
   assert.equal(r.lastLine, '⏺ 모든 단계를 완료했습니다.')
 })
+
+test('HUD 의 git 상태 줄은 마지막 출력이 아니라 저장소별 상태로 읽는다', () => {
+  const r = analyzeScreen(['⏺ 완료했습니다.', 'branch:main | ?4, branch:dev | +1 !3 ?3 ⇡2', '  ? for shortcuts'])
+  assert.equal(r.lastLine, '⏺ 완료했습니다.')
+  assert.deepEqual(r.git, [
+    { branch: 'main', staged: 0, modified: 0, untracked: 4, ahead: 0, behind: 0 },
+    { branch: 'dev', staged: 1, modified: 3, untracked: 3, ahead: 2, behind: 0 }
+  ])
+})

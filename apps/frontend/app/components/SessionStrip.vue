@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProjectConfig, ProjectUsage, SessionSnapshot } from '@claudeboard/shared'
+import type { GitRepoState, ProjectConfig, ProjectUsage, SessionSnapshot } from '@claudeboard/shared'
 import { DEFAULT_QUICK_ACTIONS } from '@claudeboard/shared'
 import type { DeepReadonly } from 'vue'
 
@@ -74,6 +74,16 @@ function send(text: string) {
 // 터미널 출력 앞의 장식 기호(⏺ ● ⎿ > 등)는 대시보드에서 의미가 없으므로 걷어낸다
 const activity = computed(() => props.session?.lastLine?.replace(/^[\s⏺●○⎿✻✢✶·>│┃*-]+/u, '').trim() || undefined)
 
+const GIT_CHANGES = [
+  { key: 'staged', sym: '+', label: '스테이징됨', cls: 'ok' },
+  { key: 'modified', sym: '±', label: '수정됨', cls: 'warn' },
+  { key: 'untracked', sym: '●', label: '추적 안 됨', cls: 'info' },
+  { key: 'ahead', sym: '↑', label: '푸시 안 한 커밋', cls: 'info' },
+  { key: 'behind', sym: '↓', label: '받아야 할 커밋', cls: 'warn' }
+] as const
+const gitCounts = (g: GitRepoState) =>
+  GIT_CHANGES.filter((c) => g[c.key] > 0).map((c) => ({ ...c, n: g[c.key] }))
+
 defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 </script>
 
@@ -107,6 +117,15 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
         <span class="state-label">{{ statusLabel }}</span>
         <span v-if="session?.activeTool && running && status !== 'IDLE'" class="tool">{{ session.activeTool }}</span>
         <span v-if="elapsed" class="elapsed">{{ elapsed }}</span>
+        <ul v-if="session?.git?.length" class="git" aria-label="git 상태">
+          <li v-for="g in session.git" :key="g.branch" class="repo">
+            <span class="branch">{{ g.branch }}</span>
+            <span v-for="c in gitCounts(g)" :key="c.label" class="chg" :class="c.cls" :title="`${c.label} ${c.n}개`">
+              {{ c.sym }}{{ c.n }}
+            </span>
+            <span v-if="!gitCounts(g).length" class="chg clean" title="변경 없음">깨끗함</span>
+          </li>
+        </ul>
       </div>
 
       <WorkflowTrack class="wf" :workflow="session?.workflow ?? { stage: null, percent: 0, source: 'none' }" :status="status" />
@@ -353,6 +372,36 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   &.muted {
     color: var(--text-3);
   }
+}
+
+.git {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 0 4px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--idle-wash);
+  color: var(--text-2);
+}
+.branch {
+  font-weight: 600;
+  color: var(--text);
+}
+.chg {
+  font-variant-numeric: tabular-nums;
+  &.ok { color: var(--ok); }
+  &.warn { color: var(--executing); }
+  &.info { color: var(--text-2); }
+  &.clean { color: var(--text-3); }
 }
 
 // 선택 시 펼쳐지는 영역: grid-template-rows 0fr → 1fr 로 높이를 자연스럽게 애니메이션
