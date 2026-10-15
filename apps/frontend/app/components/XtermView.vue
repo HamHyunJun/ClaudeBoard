@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { Terminal } from '@xterm/xterm'
+import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
@@ -41,29 +41,29 @@ let waiting = false
 let quietTimer: ReturnType<typeof setTimeout> | undefined
 let deadlineTimer: ReturnType<typeof setTimeout> | undefined
 
-function cancelReveal() {
+function cancelReveal(): void {
   waiting = false
   clearTimeout(quietTimer)
   clearTimeout(deadlineTimer)
 }
-function reveal() {
+function reveal(): void {
   cancelReveal()
   ready.value = true
 }
 // 출력이 올 때마다 호출: 마지막 출력 뒤 QUIET_MS 가 지나야 보여준다
-function holdReveal() {
+function holdReveal(): void {
   if (!waiting) return
   clearTimeout(quietTimer)
   quietTimer = setTimeout(reveal, QUIET_MS)
 }
 const SKELETON = ['38%', '72%', '56%', '24%', '64%', '48%']
 
-function css(name: string) {
+function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
 // 밝은 테마에서는 흰색·노랑 계열이 바탕에 묻히므로 ANSI 색을 어두운 쪽으로 옮긴다
-function termTheme() {
+function termTheme(): ITheme {
   const light = document.documentElement.dataset.theme === 'light'
   return {
     background: css('--ink-0'),
@@ -108,7 +108,7 @@ onMounted(() => {
 
   term.onData((data) => cmd.input(props.projectId, data))
 
-  const doFit = () => {
+  const doFit = (): void => {
     // 서랍이 접히거나 펼쳐지는 중에는 폭이 0 에 가까워 cols 가 2~3 으로 줄고, 내용이 글자 단위로 리플로우돼 한 줄처럼 보인다.
     // PTY 에도 그 크기가 전달되므로 충분히 넓을 때만 맞춘다
     if (!term || !fit || (host.value?.offsetWidth ?? 0) < MIN_FIT_WIDTH) return

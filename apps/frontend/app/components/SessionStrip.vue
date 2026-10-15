@@ -186,7 +186,7 @@ const detailId = computed(() => `strip-detail-${props.project.id}`)
 // 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
 const confirmRemove = ref(false)
 let confirmTimer: ReturnType<typeof setTimeout> | undefined
-async function removeSession() {
+async function removeSession(): Promise<void> {
   if (!confirmRemove.value) {
     confirmRemove.value = true
     confirmTimer = setTimeout(() => (confirmRemove.value = false), 3000)
@@ -204,7 +204,7 @@ async function removeSession() {
 onBeforeUnmount(() => clearTimeout(confirmTimer))
 
 // 박스의 빈 곳을 눌러도 이름을 누른 것과 같게 동작한다 (버튼·입력 등 자체 동작이 있는 요소는 제외)
-function onBoxClick(e: MouseEvent, action: 'select' | 'open') {
+function onBoxClick(e: MouseEvent, action: 'select' | 'open'): void {
   if ((e.target as HTMLElement).closest('button, input, a, form, [role=group], [role=menu]')) return
   if (action === 'select') emit('select')
   else emit('open')
@@ -215,7 +215,7 @@ const moreBtn = ref<HTMLButtonElement>()
 const menuEl = ref<HTMLElement>()
 const menuOpen = ref(false)
 const menuId = computed(() => `strip-menu-${props.project.id}`)
-function toggleMenu() {
+function toggleMenu(): void {
   const menu = menuEl.value
   const btn = moreBtn.value
   if (!menu || !btn) return
@@ -228,11 +228,11 @@ function toggleMenu() {
   menu.style.top = `${below ? r.bottom + 6 : r.top - 6 - height}px`
   menu.querySelector<HTMLElement>('[role=menuitem]')?.focus()
 }
-function onMenuToggle(e: Event) {
+function onMenuToggle(e: Event): void {
   menuOpen.value = (e as ToggleEvent).newState === 'open'
   if (!menuOpen.value) confirmRemove.value = false
 }
-function onMenuKeydown(e: KeyboardEvent) {
+function onMenuKeydown(e: KeyboardEvent): void {
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
   e.preventDefault()
   e.stopPropagation() // 랙의 세션 간 이동 단축키와 겹치지 않게
@@ -240,18 +240,18 @@ function onMenuKeydown(e: KeyboardEvent) {
   const i = items.indexOf(document.activeElement as HTMLElement)
   items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
 }
-function act(fn: () => unknown) {
+function act(fn: () => unknown): void {
   menuEl.value?.hidePopover()
   fn()
 }
 
-function move(to: 'up' | 'down' | 'top') {
+function move(to: 'up' | 'down' | 'top'): void {
   cmd.moveProject(props.project.id, to).catch((err: Error) =>
     useNotify().toast({ level: 'warning', title: err.message })
   )
 }
 
-function send(text: string) {
+function send(text: string): void {
   const t = text.trim()
   if (!t) return
   cmd.prompt(props.project.id, t)
@@ -268,7 +268,7 @@ const GIT_CHANGES = [
   { key: 'ahead', sym: '↑', label: '푸시 안 한 커밋', cls: 'info' },
   { key: 'behind', sym: '↓', label: '받아야 할 커밋', cls: 'warn' }
 ] as const
-const gitCounts = (g: GitRepoState) =>
+const gitCounts = (g: GitRepoState): Array<(typeof GIT_CHANGES)[number] & { n: number }> =>
   GIT_CHANGES.filter((c) => g[c.key] > 0).map((c) => ({ ...c, n: g[c.key] }))
 
 defineExpose({ focusPrompt: () => promptInput.value?.focus() })

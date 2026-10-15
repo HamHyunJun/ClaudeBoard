@@ -49,11 +49,11 @@ watch(open, (o) => {
   }
 })
 
-function close() {
+function close(): void {
   cmd.openTargetId.value = null
 }
 
-async function submit() {
+async function submit(): Promise<void> {
   const p = project.value
   if (!p) return
   opening.value = true

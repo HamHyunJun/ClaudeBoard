@@ -54,11 +54,11 @@ export class Session extends EventEmitter {
     }
   }
 
-  get running() {
+  get running(): boolean {
     return !!this.proc
   }
 
-  start() {
+  start(): void {
     if (this.proc) return
     const { command, args } = this.resolveCommand()
     if (!existsSync(this.project.cwd)) {
@@ -111,7 +111,7 @@ export class Session extends EventEmitter {
     })
   }
 
-  stop() {
+  stop(): void {
     if (!this.proc) return
     // Claude Code 는 Ctrl+C 두 번이면 종료된다. 응답이 없으면 강제 종료.
     const proc = this.proc
@@ -122,14 +122,14 @@ export class Session extends EventEmitter {
     }, 2500)
   }
 
-  restart() {
+  restart(): void {
     if (!this.proc) return this.start()
     // 기본 onExit 핸들러가 먼저 등록되어 있어 this.proc 정리 후에 다시 시작된다
     this.proc.onExit(() => setTimeout(() => this.start(), 50))
     this.stop()
   }
 
-  write(data: string) {
+  write(data: string): void {
     this.proc?.write(data)
   }
 
@@ -137,7 +137,7 @@ export class Session extends EventEmitter {
    * 프롬프트 전송. 텍스트와 엔터를 한 번에 쓰면 Claude Code 입력창이
    * 붙여넣기로 인식해 줄바꿈만 들어가는 경우가 있어 엔터를 살짝 늦게 보낸다.
    */
-  sendPrompt(text: string) {
+  sendPrompt(text: string): void {
     if (!this.proc) return
     const proc = this.proc
     proc.write(text.replace(/\r?\n/g, '\r'))
@@ -145,7 +145,7 @@ export class Session extends EventEmitter {
   }
 
   /** 승인/거절. 메뉴형은 Enter(1번 Yes) / Esc(거절), y/n 형은 문자 + 엔터 */
-  answerApproval(decision: 'yes' | 'no') {
+  answerApproval(decision: 'yes' | 'no'): boolean {
     const approval = this.snapshot.approval
     if (!this.proc || !approval) return false
     if (approval.kind === 'menu') this.proc.write(decision === 'yes' ? '\r' : '\x1b')
@@ -153,7 +153,7 @@ export class Session extends EventEmitter {
     return true
   }
 
-  resize(cols: number, rows: number) {
+  resize(cols: number, rows: number): void {
     cols = Math.max(20, Math.min(400, Math.floor(cols)))
     rows = Math.max(5, Math.min(200, Math.floor(rows)))
     if (cols === this.snapshot.cols && rows === this.snapshot.rows) return
@@ -166,7 +166,7 @@ export class Session extends EventEmitter {
     return this.chunks.join('')
   }
 
-  dispose() {
+  dispose(): void {
     clearTimeout(this.analyzeTimer)
     clearTimeout(this.idleTimer)
     this.proc?.kill()
@@ -185,12 +185,12 @@ export class Session extends EventEmitter {
     }
   }
 
-  private fail(error: string) {
+  private fail(error: string): void {
     this.update({ process: 'error', error })
     this.emitAlert({ level: 'critical', kind: 'error', title: `${this.project.name} 실행 실패`, body: error })
   }
 
-  private pushChunk(data: string) {
+  private pushChunk(data: string): void {
     this.chunks.push(data)
     this.bytes += data.length
     while (this.bytes > this.cfg.replayBytes && this.chunks.length > 1) {
@@ -198,7 +198,7 @@ export class Session extends EventEmitter {
     }
   }
 
-  private scheduleAnalyze() {
+  private scheduleAnalyze(): void {
     if (this.analyzeTimer) return
     this.analyzeTimer = setTimeout(() => {
       this.analyzeTimer = undefined
@@ -208,7 +208,7 @@ export class Session extends EventEmitter {
   }
 
   /** 테스트에서 직접 호출할 수 있도록 공개 */
-  analyze() {
+  analyze(): void {
     const buf = this.term.buffer.active
     const viewport: string[] = []
     for (let i = 0; i < this.term.rows; i++) {
@@ -289,7 +289,7 @@ export class Session extends EventEmitter {
     this.update(patch)
   }
 
-  private update(patch: Partial<SessionSnapshot>) {
+  private update(patch: Partial<SessionSnapshot>): void {
     this.snapshot = { ...this.snapshot, ...patch }
     // lastOutputAt 만 바뀐 경우는 브로드캐스트하지 않는다
     const { lastOutputAt: _ignored, ...rest } = this.snapshot
@@ -299,7 +299,7 @@ export class Session extends EventEmitter {
     this.emit('snapshot', this.snapshot)
   }
 
-  private emitAlert(a: Omit<Alert, 'id' | 'at' | 'projectId'>) {
+  private emitAlert(a: Omit<Alert, 'id' | 'at' | 'projectId'>): void {
     const at = Date.now()
     this.emit('alert', { ...a, id: `${a.kind}-${this.project.id}-${at}`, at, projectId: this.project.id } satisfies Alert)
   }
@@ -313,7 +313,7 @@ export class SessionManager extends EventEmitter {
     super()
   }
 
-  sync(projects: ProjectConfig[]) {
+  sync(projects: ProjectConfig[]): void {
     for (const p of projects) {
       const existing = this.sessions.get(p.id)
       if (existing) {
@@ -336,7 +336,7 @@ export class SessionManager extends EventEmitter {
     }
   }
 
-  get(id: string) {
+  get(id: string): Session | undefined {
     return this.sessions.get(id)
   }
 
@@ -344,7 +344,7 @@ export class SessionManager extends EventEmitter {
     return [...this.sessions.values()].map((s) => s.snapshot)
   }
 
-  disposeAll() {
+  disposeAll(): void {
     for (const s of this.sessions.values()) s.dispose()
     this.sessions.clear()
   }

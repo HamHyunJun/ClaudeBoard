@@ -11,9 +11,57 @@ import type {
   UsageSummary
 } from '@claudeboard/shared'
 import { WS_PATH } from '@claudeboard/shared'
+import type { ComputedRef, DeepReadonly, Ref } from 'vue'
 
 type ConnState = 'connecting' | 'open' | 'closed'
 type OutputListener = (data: string, kind: 'replay' | 'output') => void
+
+export interface SessionItem {
+  project: ProjectConfig
+  session: SessionSnapshot | undefined
+}
+
+export interface SessionCounts {
+  running: number
+  busy: number
+  approval: number
+  asking: number
+}
+
+export interface Commander {
+  conn: DeepReadonly<Ref<ConnState>>
+  demo: DeepReadonly<Ref<boolean>>
+  projects: DeepReadonly<Ref<ProjectConfig[]>>
+  sessions: DeepReadonly<Ref<Record<string, SessionSnapshot>>>
+  usage: DeepReadonly<Ref<UsageSummary | null>>
+  alerts: DeepReadonly<Ref<Alert[]>>
+  lastError: DeepReadonly<Ref<string | null>>
+  selectedId: Ref<string | null>
+  terminalOpen: Ref<boolean>
+  openTargetId: Ref<string | null>
+  seenDoneAt: Ref<Record<string, number>>
+  sessionList: ComputedRef<SessionItem[]>
+  pendingApprovals: ComputedRef<SessionItem[]>
+  selected: ComputedRef<SessionItem | null>
+  terminalTarget: ComputedRef<SessionItem | null>
+  counts: ComputedRef<SessionCounts>
+  subscribe: (projectId: string, fn: OutputListener) => () => void
+  onAlert: (fn: (a: Alert) => void) => () => boolean
+  openTerminal: (id: string) => void
+  input: (projectId: string, data: string) => void
+  prompt: (projectId: string, text: string) => void
+  resize: (projectId: string, cols: number, rows: number) => void
+  approve: (projectId: string, decision: 'yes' | 'no') => void
+  start: (projectId: string) => void
+  stop: (projectId: string) => void
+  restart: (projectId: string) => void
+  addProject: (body: CreateProjectBody) => Promise<ProjectConfig>
+  listDirs: (path?: string) => Promise<DirListing>
+  openProject: (id: string, app: OpenAppId) => Promise<void>
+  moveProject: (id: string, to: 'up' | 'down' | 'top') => Promise<void>
+  removeProject: (id: string) => Promise<void>
+  reconnectNow: () => void
+}
 
 /**
  * 백엔드와의 단일 WebSocket 연결과 앱 전역 상태.
@@ -60,7 +108,7 @@ function wsUrl(): string {
   return u.toString()
 }
 
-function connect() {
+function connect(): void {
   conn.value = 'connecting'
   ws = new WebSocket(wsUrl())
   ws.onopen = () => {
@@ -83,7 +131,7 @@ function connect() {
   ws.onerror = () => ws?.close()
 }
 
-function handle(msg: ServerMessage) {
+function handle(msg: ServerMessage): void {
   switch (msg.t) {
     case 'hello':
       demo.value = msg.demo
@@ -124,7 +172,7 @@ function handle(msg: ServerMessage) {
   }
 }
 
-function send(msg: ClientMessage) {
+function send(msg: ClientMessage): void {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
 }
 
@@ -142,7 +190,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.status === 204 ? (undefined as T) : res.json()
 }
 
-export function useCommander() {
+export function useCommander(): Commander {
   if (!started && import.meta.client) {
     started = true
     connect()
@@ -182,7 +230,7 @@ export function useCommander() {
   })
 
   /** 터미널 출력 구독. 첫 구독자일 때만 서버에 subscribe 를 보낸다 */
-  function subscribe(projectId: string, fn: OutputListener) {
+  function subscribe(projectId: string, fn: OutputListener): () => void {
     let set = listeners.get(projectId)
     if (!set) {
       set = new Set()
@@ -199,12 +247,12 @@ export function useCommander() {
     }
   }
 
-  function onAlert(fn: (a: Alert) => void) {
+  function onAlert(fn: (a: Alert) => void): () => boolean {
     alertHandlers.add(fn)
     return () => alertHandlers.delete(fn)
   }
 
-  function openTerminal(id: string) {
+  function openTerminal(id: string): void {
     selectedId.value = id
     terminalOpen.value = true
   }
@@ -229,19 +277,19 @@ export function useCommander() {
     subscribe,
     onAlert,
     openTerminal,
-    input: (projectId: string, data: string) => send({ t: 'input', projectId, data }),
-    prompt: (projectId: string, text: string) => send({ t: 'prompt', projectId, text }),
-    resize: (projectId: string, cols: number, rows: number) => send({ t: 'resize', projectId, cols, rows }),
-    approve: (projectId: string, decision: 'yes' | 'no') => send({ t: 'approve', projectId, decision }),
-    start: (projectId: string) => send({ t: 'start', projectId }),
-    stop: (projectId: string) => send({ t: 'stop', projectId }),
-    restart: (projectId: string) => send({ t: 'restart', projectId }),
-    addProject: (body: CreateProjectBody) => api<ProjectConfig>('/api/projects', { method: 'POST', body: JSON.stringify(body) }),
-    listDirs: (path?: string) => api<DirListing>(`/api/fs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
-    openProject: (id: string, app: OpenAppId) =>
+    input: (projectId: string, data: string): void => send({ t: 'input', projectId, data }),
+    prompt: (projectId: string, text: string): void => send({ t: 'prompt', projectId, text }),
+    resize: (projectId: string, cols: number, rows: number): void => send({ t: 'resize', projectId, cols, rows }),
+    approve: (projectId: string, decision: 'yes' | 'no'): void => send({ t: 'approve', projectId, decision }),
+    start: (projectId: string): void => send({ t: 'start', projectId }),
+    stop: (projectId: string): void => send({ t: 'stop', projectId }),
+    restart: (projectId: string): void => send({ t: 'restart', projectId }),
+    addProject: (body: CreateProjectBody): Promise<ProjectConfig> => api<ProjectConfig>('/api/projects', { method: 'POST', body: JSON.stringify(body) }),
+    listDirs: (path?: string): Promise<DirListing> => api<DirListing>(`/api/fs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
+    openProject: (id: string, app: OpenAppId): Promise<void> =>
       api<void>(`/api/projects/${encodeURIComponent(id)}/open`, { method: 'POST', body: JSON.stringify({ app } satisfies OpenProjectBody) }),
     /** 세션을 위/아래로 한 칸, 또는 맨 위로 옮긴다 */
-    moveProject(id: string, to: 'up' | 'down' | 'top') {
+    moveProject(id: string, to: 'up' | 'down' | 'top'): Promise<void> {
       const ids = projects.value.map((p) => p.id)
       const i = ids.indexOf(id)
       if (i < 0) return Promise.resolve()
@@ -250,8 +298,8 @@ export function useCommander() {
       ids.splice(j, 0, ids.splice(i, 1)[0]!)
       return api<void>('/api/projects/order', { method: 'PUT', body: JSON.stringify({ ids }) })
     },
-    removeProject: (id: string) => api<void>(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-    reconnectNow: () => {
+    removeProject: (id: string): Promise<void> => api<void>(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    reconnectNow: (): void => {
       clearTimeout(retryTimer)
       retry = 0
       ws?.close()

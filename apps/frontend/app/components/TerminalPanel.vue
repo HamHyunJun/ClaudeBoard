@@ -84,14 +84,14 @@ const session = computed(() => item.value?.session)
 const running = computed(() => session.value?.process === 'running' || session.value?.process === 'starting')
 const events = computed(() => cmd.alerts.value.filter((a) => a.projectId === item.value?.project.id))
 
-function moveIndicator() {
+function moveIndicator(): void {
   const el = tabEls.value[tab.value]
   if (el) indicator.value = { x: el.offsetLeft, w: el.offsetWidth }
 }
 watch(tab, () => nextTick(moveIndicator))
 onMounted(() => nextTick(moveIndicator))
 
-function onTabKey(e: KeyboardEvent) {
+function onTabKey(e: KeyboardEvent): void {
   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
   e.preventDefault()
   tab.value = tab.value === 'terminal' ? 'events' : 'terminal'

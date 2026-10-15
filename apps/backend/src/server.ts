@@ -51,7 +51,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
 
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' } })
 
-  const checkToken = (url: string | undefined, header: string | string[] | undefined) => {
+  const checkToken = (url: string | undefined, header: string | string[] | undefined): boolean => {
     if (!cfg.accessToken) return true
     const q = new URL(url ?? '/', 'http://x').searchParams.get('token')
     return q === cfg.accessToken || header === `Bearer ${cfg.accessToken}`
@@ -75,14 +75,14 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
 
   /* ───────────── 브로드캐스트 ───────────── */
 
-  const send = (ws: WebSocket, msg: ServerMessage) => {
+  const send = (ws: WebSocket, msg: ServerMessage): void => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
   }
-  const broadcast = (msg: ServerMessage) => {
+  const broadcast = (msg: ServerMessage): void => {
     const raw = JSON.stringify(msg)
     for (const c of clients) if (c.ws.readyState === WebSocket.OPEN) c.ws.send(raw)
   }
-  const pushAlert = (alert: Alert) => {
+  const pushAlert = (alert: Alert): void => {
     alerts.unshift(alert)
     alerts.length = Math.min(alerts.length, MAX_ALERTS)
     broadcast({ t: 'alert', alert })
@@ -99,7 +99,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   usage.on('usage', (u) => broadcast({ t: 'usage', usage: u }))
   usage.on('alert', pushAlert)
 
-  const syncProjects = () => {
+  const syncProjects = (): void => {
     usage.setProjects(store.list())
     sessions.sync(store.list())
     broadcast({ t: 'projects', projects: store.list() })
@@ -191,7 +191,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   // 데모에서는 실제 계정을 건드리지 않는다
   const official = new OfficialUsageClient()
   let lastPolledAt = 0
-  async function pollOfficial() {
+  async function pollOfficial(): Promise<void> {
     lastPolledAt = Date.now()
     usage.setOfficial(await official.poll())
   }
@@ -224,7 +224,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
     ws.on('error', () => clients.delete(client))
   })
 
-  function handle(client: Client, msg: ClientMessage) {
+  function handle(client: Client, msg: ClientMessage): void {
     if (msg.t === 'ping') return send(client.ws, { t: 'pong' })
     const session = sessions.get(msg.projectId)
     if (!session) return send(client.ws, { t: 'error', message: '알 수 없는 프로젝트입니다', projectId: msg.projectId })
@@ -279,7 +279,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
     sessions,
     usage,
     store,
-    async close() {
+    async close(): Promise<void> {
       usage.stop()
       clearInterval(officialTimer)
       sessions.disposeAll()
@@ -291,7 +291,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
 }
 
 /** 데모 모드: 비어 있으면 임시 디렉터리 세 개를 프로젝트로 등록 */
-function seedDemoProjects(store: ProjectStore, cfg: ServerConfig) {
+function seedDemoProjects(store: ProjectStore, cfg: ServerConfig): void {
   if (store.list().length) return
   const demos = [
     { name: 'payments-api', autoStart: true },

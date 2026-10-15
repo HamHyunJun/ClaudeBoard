@@ -67,7 +67,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => offAlert?.())
 
-function onGlobalKey(e: KeyboardEvent) {
+function onGlobalKey(e: KeyboardEvent): void {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     paletteOpen.value = !paletteOpen.value

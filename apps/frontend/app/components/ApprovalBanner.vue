@@ -48,7 +48,7 @@ const cmd = useCommander()
 const now = useNow()
 const sent = ref<Record<string, 'yes' | 'no'>>({})
 
-function answer(id: string, decision: 'yes' | 'no') {
+function answer(id: string, decision: 'yes' | 'no'): void {
   sent.value = { ...sent.value, [id]: decision }
   cmd.approve(id, decision)
 }

@@ -20,8 +20,8 @@ export interface UsageRecord {
 }
 
 const ZERO = (): TokenBreakdown => ({ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 })
-const sum = (t: TokenBreakdown) => t.input + t.output + t.cacheWrite + t.cacheRead
-function add(a: TokenBreakdown, b: TokenBreakdown) {
+const sum = (t: TokenBreakdown): number => t.input + t.output + t.cacheWrite + t.cacheRead
+function add(a: TokenBreakdown, b: TokenBreakdown): void {
   a.input += b.input
   a.output += b.output
   a.cacheWrite += b.cacheWrite
@@ -54,18 +54,18 @@ export function parseUsageLine(line: string): { key: string; record: UsageRecord
   }
 }
 
-function startOfDay(now: number) {
+function startOfDay(now: number): number {
   const d = new Date(now)
   d.setHours(0, 0, 0, 0)
   return d.getTime()
 }
-function startOfWeek(now: number) {
+function startOfWeek(now: number): number {
   const d = new Date(startOfDay(now))
   const diff = (d.getDay() + 6) % 7 // 월요일 시작
   d.setDate(d.getDate() - diff)
   return d.getTime()
 }
-function startOfMonth(now: number) {
+function startOfMonth(now: number): number {
   const d = new Date(startOfDay(now))
   d.setDate(1)
   return d.getTime()
@@ -75,7 +75,7 @@ function startOfMonth(now: number) {
  * 5시간 롤링 블록 계산 (Claude 구독 사용량 창과 같은 방식):
  * 첫 메시지 시각을 정시로 내림해 블록을 열고, 블록이 끝났거나 5시간 이상 공백이면 새 블록을 연다.
  */
-export function currentWindow(records: UsageRecord[], now: number, hours: number) {
+export function currentWindow(records: UsageRecord[], now: number, hours: number): { startedAt: number | null; resetsAt: number | null; used: number } {
   const span = hours * 3600_000
   let start: number | null = null
   let last = 0
@@ -109,7 +109,7 @@ export class UsageTracker extends EventEmitter {
     super()
   }
 
-  setProjects(projects: ProjectConfig[]) {
+  setProjects(projects: ProjectConfig[]): void {
     // 로그의 cwd 는 심볼릭 링크가 풀린 실제 경로(macOS /var → /private/var)라 같은 기준으로 맞춘다
     this.projects = projects.map((p) => {
       try {
@@ -120,8 +120,8 @@ export class UsageTracker extends EventEmitter {
     })
   }
 
-  start(intervalMs = 3000) {
-    const tick = async () => {
+  start(intervalMs = 3000): void {
+    const tick = async (): Promise<void> => {
       try {
         const changed = await this.scan()
         if (changed || !this.lastSummary || Date.now() - this.lastSummary.generatedAt > 15_000) {
@@ -138,19 +138,19 @@ export class UsageTracker extends EventEmitter {
     this.timer = setInterval(tick, intervalMs)
   }
 
-  stop() {
+  stop(): void {
     clearInterval(this.timer)
   }
 
   /** 구독 계정 실측값 갱신 → 즉시 대시보드에 반영 */
-  setOfficial(official: OfficialUsage) {
+  setOfficial(official: OfficialUsage): void {
     this.official = official
     this.lastSummary = this.summary()
     this.emit('usage', this.lastSummary)
   }
 
   /** 테스트·외부 주입용 */
-  ingest(record: UsageRecord) {
+  ingest(record: UsageRecord): void {
     this.records.push(record)
   }
 
@@ -300,7 +300,7 @@ export class UsageTracker extends EventEmitter {
   }
 }
 
-export function formatTokens(n: number) {
+export function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
   return String(n)

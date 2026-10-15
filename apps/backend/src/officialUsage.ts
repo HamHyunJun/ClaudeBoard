@@ -61,7 +61,7 @@ export class OfficialUsageClient {
   constructor(
     private deps: { credentials: () => Promise<Credentials | null>; fetch: typeof fetch; now: () => number } = {
       credentials: readCredentials,
-      fetch: (...a) => fetch(...a),
+      fetch: (...a): Promise<Response> => fetch(...a),
       now: Date.now
     }
   ) {}

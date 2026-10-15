@@ -35,7 +35,7 @@ watch(
   }
 )
 
-function trap(e: KeyboardEvent) {
+function trap(e: KeyboardEvent): void {
   if (e.key === 'Escape') {
     e.stopPropagation()
     emit('close')

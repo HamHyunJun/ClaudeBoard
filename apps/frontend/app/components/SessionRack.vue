@@ -41,7 +41,7 @@ const emit = defineEmits<{ add: [] }>()
 const cmd = useCommander()
 // v-for 의 ref 배열은 순서가 보장되지 않으므로 프로젝트 id 로 보관
 const strips = new Map<string, InstanceType<typeof SessionStrip>>()
-function setStrip(id: string, el: unknown) {
+function setStrip(id: string, el: unknown): void {
   if (el) strips.set(id, el as InstanceType<typeof SessionStrip>)
   else strips.delete(id)
 }
@@ -54,15 +54,15 @@ const usageById = computed(() => {
 })
 const hogThreshold = computed(() => (cmd.demo.value ? 300_000 : 400_000))
 
-function select(id: string) {
+function select(id: string): void {
   cmd.selectedId.value = cmd.selectedId.value === id ? null : id
 }
 
-function focusStrip(id: string) {
+function focusStrip(id: string): void {
   listEl.value?.querySelector<HTMLButtonElement>(`[data-project="${CSS.escape(id)}"] .ident`)?.focus()
 }
 
-function onKeydown(e: KeyboardEvent) {
+function onKeydown(e: KeyboardEvent): void {
   const target = e.target as HTMLElement
   if (target.closest('input, textarea')) return
   const ids = cmd.sessionList.value.map((x) => x.project.id)
@@ -87,7 +87,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 defineExpose({
-  focusPrompt(id: string) {
+  focusPrompt(id: string): void {
     cmd.selectedId.value = id
     nextTick(() => setTimeout(() => strips.get(id)?.focusPrompt(), 60))
   }

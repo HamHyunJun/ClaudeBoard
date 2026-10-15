@@ -100,10 +100,10 @@ const resetIn = computed(() => {
 const fiveHourPercent = computed(() => (resetIn.value === null ? 0 : (fiveHour.value?.percent ?? 0)))
 const weekResetsAt = computed(() => sevenDay.value?.resetsAt)
 
-const nameOf = (id: string | null, cwd: string) =>
+const nameOf = (id: string | null, cwd: string): string =>
   (id && cmd.projects.value.find((p) => p.id === id)?.name) || shortPath(cwd)
 const topProjects = computed(() => (u.value?.projects ?? []).slice(0, 6))
-const projectTotal = (p: { today: { input: number; output: number; cacheWrite: number; cacheRead: number } }) =>
+const projectTotal = (p: { today: { input: number; output: number; cacheWrite: number; cacheRead: number } }): number =>
   p.today.input + p.today.output + p.today.cacheWrite + p.today.cacheRead
 const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTotal)))
 </script>
