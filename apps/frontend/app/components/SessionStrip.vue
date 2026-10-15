@@ -57,6 +57,13 @@ async function removeSession() {
 }
 onBeforeUnmount(() => clearTimeout(confirmTimer))
 
+// 박스의 빈 곳을 눌러도 이름을 누른 것과 같게 동작한다 (버튼·입력 등 자체 동작이 있는 요소는 제외)
+function onBoxClick(e: MouseEvent, action: 'select' | 'open') {
+  if ((e.target as HTMLElement).closest('button, input, a, form, [role=group]')) return
+  if (action === 'select') emit('select')
+  else emit('open')
+}
+
 function send(text: string) {
   const t = text.trim()
   if (!t) return
@@ -73,6 +80,8 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
     :class="[running ? STATUS_CLASS[status] : 'offline', { selected, hot }]"
     :aria-labelledby="nameId"
     :data-project="project.id"
+    @click="onBoxClick($event, 'select')"
+    @dblclick="onBoxClick($event, 'open')"
   >
     <span class="rail" aria-hidden="true" />
 
@@ -183,6 +192,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
     border-color var(--dur) var(--ease-out),
     background-color var(--dur) var(--ease-out);
 
+  cursor: pointer;
   &:hover {
     border-color: var(--rule-strong);
   }
@@ -417,7 +427,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
     background: var(--text);
     color: var(--ink-0);
     &:hover:not(:disabled) {
-      background: #fff;
+      background: color-mix(in srgb, var(--text) 82%, var(--ink-1));
     }
   }
   &:disabled {

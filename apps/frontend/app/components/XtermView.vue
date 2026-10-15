@@ -10,6 +10,7 @@ import '@xterm/xterm/css/xterm.css'
  */
 const props = defineProps<{ projectId: string; label: string }>()
 const cmd = useCommander()
+const { theme } = useTheme()
 const host = ref<HTMLDivElement>()
 let term: Terminal | undefined
 let fit: FitAddon | undefined
@@ -21,6 +22,33 @@ function css(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
+// 밝은 테마에서는 흰색·노랑 계열이 바탕에 묻히므로 ANSI 색을 어두운 쪽으로 옮긴다
+function termTheme() {
+  const light = document.documentElement.dataset.theme === 'light'
+  return {
+    background: css('--ink-0'),
+    foreground: css('--text'),
+    cursor: css('--focus'),
+    selectionBackground: light ? 'rgba(29, 111, 209, 0.25)' : 'rgba(159, 209, 255, 0.3)',
+    black: light ? '#18212b' : '#1b2633',
+    brightBlack: light ? '#6b7b8e' : '#5b6b7e',
+    red: light ? '#d0305a' : '#f2577a',
+    brightRed: light ? '#e5486f' : '#ff8aa3',
+    green: light ? '#1f9568' : '#57c79a',
+    brightGreen: light ? '#2bae7e' : '#7fe0b7',
+    yellow: light ? '#a87908' : '#f0c46b',
+    brightYellow: light ? '#c08e1a' : '#ffd98f',
+    blue: light ? '#3f7aa8' : '#7fa3c2',
+    brightBlue: light ? '#5593c4' : '#a6c6e2',
+    magenta: light ? '#6d57d6' : '#a99bf0',
+    brightMagenta: light ? '#8872e6' : '#c7bdff',
+    cyan: light ? '#1b8a9a' : '#6fc3d1',
+    brightCyan: light ? '#2aa3b5' : '#9be0ea',
+    white: light ? '#4a5a6c' : '#c9d3dd',
+    brightWhite: light ? '#18212b' : '#f3f6f9'
+  }
+}
+
 onMounted(() => {
   term = new Terminal({
     cursorBlink: true,
@@ -30,28 +58,7 @@ onMounted(() => {
     scrollback: 5000,
     allowProposedApi: true,
     screenReaderMode: false,
-    theme: {
-      background: css('--ink-0'),
-      foreground: css('--text'),
-      cursor: css('--focus'),
-      selectionBackground: 'rgba(159, 209, 255, 0.3)',
-      black: '#1b2633',
-      brightBlack: '#5b6b7e',
-      red: '#f2577a',
-      brightRed: '#ff8aa3',
-      green: '#57c79a',
-      brightGreen: '#7fe0b7',
-      yellow: '#f0c46b',
-      brightYellow: '#ffd98f',
-      blue: '#7fa3c2',
-      brightBlue: '#a6c6e2',
-      magenta: '#a99bf0',
-      brightMagenta: '#c7bdff',
-      cyan: '#6fc3d1',
-      brightCyan: '#9be0ea',
-      white: '#c9d3dd',
-      brightWhite: '#f3f6f9'
-    }
+    theme: termTheme()
   })
   fit = new FitAddon()
   term.loadAddon(fit)
@@ -92,6 +99,8 @@ onMounted(() => {
   document.fonts?.ready.then(() => replayed && doFit())
   term.focus()
 })
+
+watch(theme, () => nextTick(() => term && (term.options.theme = termTheme())))
 
 onBeforeUnmount(() => {
   unsubscribe?.()
