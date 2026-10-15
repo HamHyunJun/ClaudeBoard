@@ -86,7 +86,7 @@ const listing = ref<DirListing | null>(null)
 const browseError = ref('')
 const listEl = ref<HTMLElement | null>(null)
 
-async function browse(path?: string): Promise<void> {
+const browse = async (path?: string): Promise<void> => {
   browseError.value = ''
   try {
     listing.value = await cmd.listDirs(path)
@@ -97,19 +97,19 @@ async function browse(path?: string): Promise<void> {
   }
 }
 
-function toggleBrowse(): void {
+const toggleBrowse = (): void => {
   browsing.value = !browsing.value
   if (browsing.value) browse(form.cwd.trim() || undefined)
 }
 
-function pick(): void {
+const pick = (): void => {
   if (!listing.value) return
   form.cwd = listing.value.path
   browsing.value = false
   error.value = ''
 }
 
-async function submit(): Promise<void> {
+const submit = async (): Promise<void> => {
   if (!form.cwd.trim()) {
     error.value = '프로젝트 경로를 입력하세요.'
     return

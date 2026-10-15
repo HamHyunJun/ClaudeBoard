@@ -207,7 +207,7 @@ const menuId = computed(() => `strip-menu-${props.project.id}`)
 // 터미널 출력 앞의 장식 기호(⏺ ● ⎿ > 등)는 대시보드에서 의미가 없으므로 걷어낸다
 const activity = computed(() => props.session?.lastLine?.replace(/^[\s⏺●○⎿✻✢✶·>│┃*-]+/u, '').trim() || undefined)
 
-async function removeSession(): Promise<void> {
+const removeSession = async (): Promise<void> => {
   if (!confirmRemove.value) {
     confirmRemove.value = true
     confirmTimer = setTimeout(() => (confirmRemove.value = false), 3000)
@@ -224,12 +224,12 @@ async function removeSession(): Promise<void> {
 }
 
 // 박스의 빈 곳을 눌러도 이름을 누른 것과 같게 동작한다 (버튼·입력 등 자체 동작이 있는 요소는 제외)
-function onBoxClick(e: MouseEvent, action: 'select' | 'open'): void {
+const onBoxClick = (e: MouseEvent, action: 'select' | 'open'): void => {
   if ((e.target as HTMLElement).closest('button, input, a, form, [role=group], [role=menu]')) return
   if (action === 'select') emit('select')
   else emit('open')
 }
-function toggleMenu(): void {
+const toggleMenu = (): void => {
   const menu = menuEl.value
   const btn = moreBtn.value
   if (!menu || !btn) return
@@ -242,11 +242,11 @@ function toggleMenu(): void {
   menu.style.top = `${below ? r.bottom + 6 : r.top - 6 - height}px`
   menu.querySelector<HTMLElement>('[role=menuitem]')?.focus()
 }
-function onMenuToggle(e: Event): void {
+const onMenuToggle = (e: Event): void => {
   menuOpen.value = (e as ToggleEvent).newState === 'open'
   if (!menuOpen.value) confirmRemove.value = false
 }
-function onMenuKeydown(e: KeyboardEvent): void {
+const onMenuKeydown = (e: KeyboardEvent): void => {
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
   e.preventDefault()
   e.stopPropagation() // 랙의 세션 간 이동 단축키와 겹치지 않게
@@ -254,18 +254,18 @@ function onMenuKeydown(e: KeyboardEvent): void {
   const i = items.indexOf(document.activeElement as HTMLElement)
   items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
 }
-function act(fn: () => unknown): void {
+const act = (fn: () => unknown): void => {
   menuEl.value?.hidePopover()
   fn()
 }
 
-function move(to: 'up' | 'down' | 'top'): void {
+const move = (to: 'up' | 'down' | 'top'): void => {
   cmd.moveProject(props.project.id, to).catch((err: Error) =>
     useNotify().toast({ level: 'warning', title: err.message })
   )
 }
 
-function send(text: string): void {
+const send = (text: string): void => {
   const t = text.trim()
   if (!t) return
   cmd.prompt(props.project.id, t)

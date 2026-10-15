@@ -38,12 +38,12 @@ export interface ScreenAnalysis {
   git?: GitRepoState[]
 }
 
-function clean(line: string): string {
+const clean = (line: string): string => {
   return line.replace(/\s+$/u, '')
 }
 
 /** 상자 테두리 문자를 걷어낸 본문 */
-function unbox(line: string): string {
+const unbox = (line: string): string => {
   return line.replace(/^[\s│┃|╭╮╰╯─━]+|[\s│┃|╭╮╰╯─━]+$/gu, '').trim()
 }
 
@@ -64,7 +64,7 @@ export function parseGitHud(line: string): GitRepoState[] | undefined {
   return repos.length ? repos : undefined
 }
 
-function isChrome(line: string): boolean {
+const isChrome = (line: string): boolean => {
   const t = line.trim()
   if (!t) return true
   // 입력 상자 테두리, 단축키 안내 같은 UI 크롬은 요약 대상에서 제외
@@ -84,7 +84,7 @@ export function analyzeScreen(rawLines: string[]): ScreenAnalysis {
   return { ...analyzeBody(rawLines), git }
 }
 
-function analyzeBody(rawLines: string[]): ScreenAnalysis {
+const analyzeBody = (rawLines: string[]): ScreenAnalysis => {
   const lines = rawLines.map(clean)
   // 실제 내용이 있는 마지막 줄 위치
   let end = lines.length
@@ -162,7 +162,7 @@ function analyzeBody(rawLines: string[]): ScreenAnalysis {
   return { status: 'IDLE', lastLine }
 }
 
-function detectTool(lines: string[]): string | undefined {
+const detectTool = (lines: string[]): string | undefined => {
   for (const l of [...lines].reverse()) {
     const m = l.match(TOOL_HEADER)
     if (m) return m[1]
@@ -172,7 +172,7 @@ function detectTool(lines: string[]): string | undefined {
   return undefined
 }
 
-function findLastIndex<T>(arr: T[], pred: (v: T) => boolean): number {
+const findLastIndex = <T>(arr: T[], pred: (v: T) => boolean): number => {
   for (let i = arr.length - 1; i >= 0; i--) if (pred(arr[i]!)) return i
   return -1
 }
@@ -220,7 +220,7 @@ const USER_PROMPT = /^\s*[│┃]?\s*>\s+\S/
  * 단계는 되돌아가지 않는다(수정 후 파일을 다시 읽어도 execute 유지).
  * shortcut: 도구 종류만 보는 휴리스틱, 'review' 는 표식이 있을 때만 잡힌다.
  */
-function inferStage(lines: string[]): WorkflowStage | null {
+const inferStage = (lines: string[]): WorkflowStage | null => {
   const from = findLastIndex(lines, (l) => USER_PROMPT.test(l)) + 1
   let best = -1
   for (const l of lines.slice(from)) {

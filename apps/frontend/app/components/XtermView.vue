@@ -136,28 +136,28 @@ onBeforeUnmount(() => {
   fit = undefined
 })
 
-function cancelReveal(): void {
+const cancelReveal = (): void => {
   waiting = false
   clearTimeout(quietTimer)
   clearTimeout(deadlineTimer)
 }
-function reveal(): void {
+const reveal = (): void => {
   cancelReveal()
   ready.value = true
 }
 // 출력이 올 때마다 호출: 마지막 출력 뒤 QUIET_MS 가 지나야 보여준다
-function holdReveal(): void {
+const holdReveal = (): void => {
   if (!waiting) return
   clearTimeout(quietTimer)
   quietTimer = setTimeout(reveal, QUIET_MS)
 }
 
-function css(name: string): string {
+const css = (name: string): string => {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
 // 밝은 테마에서는 흰색·노랑 계열이 바탕에 묻히므로 ANSI 색을 어두운 쪽으로 옮긴다
-function termTheme(): ITheme {
+const termTheme = (): ITheme => {
   const light = document.documentElement.dataset.theme === 'light'
   return {
     background: css('--ink-0'),

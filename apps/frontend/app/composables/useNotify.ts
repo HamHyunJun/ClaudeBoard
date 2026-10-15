@@ -25,24 +25,24 @@ const permission = ref<NotificationPermission | 'unsupported'>(
 
 /** 화면 안 토스트 + 브라우저 데스크톱 알림 */
 export function useNotify(): UseNotify {
-  function toast(t: Omit<Toast, 'id'> & { id?: string }, ttl = 6000): void {
+  const toast = (t: Omit<Toast, 'id'> & { id?: string }, ttl = 6000): void => {
     const id = t.id ?? `t-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     toasts.value = [...toasts.value.filter((x) => x.id !== id), { ...t, id }].slice(-4)
     if (ttl > 0) setTimeout(() => dismiss(id), ttl)
   }
 
-  function dismiss(id: string): void {
+  const dismiss = (id: string): void => {
     toasts.value = toasts.value.filter((t) => t.id !== id)
   }
 
-  async function requestPermission(): Promise<void> {
+  const requestPermission = async (): Promise<void> => {
     if (permission.value === 'unsupported') return
     permission.value = await Notification.requestPermission()
     if (permission.value === 'granted') toast({ level: 'info', title: '데스크톱 알림을 켰습니다' }, 3000)
   }
 
   /** 승인 요청·작업 완료는 창이 가려져 있을 때 데스크톱 알림으로도 보낸다 */
-  function desktop(alert: Alert, onClick?: () => void): void {
+  const desktop = (alert: Alert, onClick?: () => void): void => {
     if (permission.value !== 'granted') return
     if (!['approval', 'question', 'task-done', 'token-hog'].includes(alert.kind)) return
     if (document.visibilityState === 'visible' && document.hasFocus()) return

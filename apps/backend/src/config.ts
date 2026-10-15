@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path'
 import { DEFAULT_BACKEND_PORT } from '@claudeboard/shared'
 
 /** 환경 변수에서 정수 읽기 (빈 값이나 잘못된 값이면 기본값) */
-function intEnv(name: string, fallback: number): number {
+const intEnv = (name: string, fallback: number): number => {
   const raw = process.env[name]
   if (!raw) return fallback
   const n = Number(raw.replace(/_/g, ''))

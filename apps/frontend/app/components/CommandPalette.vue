@@ -130,14 +130,14 @@ const groups = computed(() => {
   return [...map.entries()]
 })
 
-function run(item?: Item): void {
+const run = (item?: Item): void => {
   if (!item) return
   emit('close')
   // 닫힘 애니메이션·포커스 복원 이후 실행해야 포커스 이동 명령이 덮어써지지 않는다
   setTimeout(item.run, 30)
 }
 
-function onKey(e: KeyboardEvent): void {
+const onKey = (e: KeyboardEvent): void => {
   const n = items.value.length
   if (e.key === 'ArrowDown') {
     e.preventDefault()

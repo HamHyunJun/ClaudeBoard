@@ -76,7 +76,7 @@ onBeforeUnmount(() => {
 const hasTerminal = computed(() => !!cmd.terminalTarget.value)
 const termOpen = computed(() => cmd.terminalOpen.value && hasTerminal.value)
 
-function onGlobalKey(e: KeyboardEvent): void {
+const onGlobalKey = (e: KeyboardEvent): void => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     paletteOpen.value = !paletteOpen.value

@@ -47,7 +47,7 @@ export function planLabel(c: Pick<Credentials, 'subscriptionType' | 'rateLimitTi
   return t === 'max' && mult ? `${base} ${mult}x` : base
 }
 
-function toLimit(v: any): OfficialLimit | null {
+const toLimit = (v: any): OfficialLimit | null => {
   if (typeof v?.utilization !== 'number') return null
   const at = Date.parse(v.resets_at ?? '')
   return { percent: Math.max(0, Math.min(100, v.utilization)), // 13:59:59.9 처럼 오는 값을 분 단위로 맞춘다

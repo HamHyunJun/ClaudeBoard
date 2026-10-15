@@ -21,7 +21,7 @@ const emit = defineEmits<{ close: [] }>()
 const panel = ref<HTMLElement>()
 let restoreFocus: HTMLElement | null = null
 
-function trap(e: KeyboardEvent): void {
+const trap = (e: KeyboardEvent): void => {
   if (e.key === 'Escape') {
     e.stopPropagation()
     emit('close')

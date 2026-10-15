@@ -21,7 +21,7 @@ export interface UsageRecord {
 
 const ZERO = (): TokenBreakdown => ({ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 })
 const sum = (t: TokenBreakdown): number => t.input + t.output + t.cacheWrite + t.cacheRead
-function add(a: TokenBreakdown, b: TokenBreakdown): void {
+const add = (a: TokenBreakdown, b: TokenBreakdown): void => {
   a.input += b.input
   a.output += b.output
   a.cacheWrite += b.cacheWrite
@@ -54,18 +54,18 @@ export function parseUsageLine(line: string): { key: string; record: UsageRecord
   }
 }
 
-function startOfDay(now: number): number {
+const startOfDay = (now: number): number => {
   const d = new Date(now)
   d.setHours(0, 0, 0, 0)
   return d.getTime()
 }
-function startOfWeek(now: number): number {
+const startOfWeek = (now: number): number => {
   const d = new Date(startOfDay(now))
   const diff = (d.getDay() + 6) % 7 // 월요일 시작
   d.setDate(d.getDate() - diff)
   return d.getTime()
 }
-function startOfMonth(now: number): number {
+const startOfMonth = (now: number): number => {
   const d = new Date(startOfDay(now))
   d.setDate(1)
   return d.getTime()
@@ -306,7 +306,7 @@ export function formatTokens(n: number): string {
   return String(n)
 }
 
-async function listJsonl(root: string, depth = 0): Promise<string[]> {
+const listJsonl = async (root: string, depth = 0): Promise<string[]> => {
   if (depth > 3) return []
   const out: string[] = []
   const entries = await readdir(root, { withFileTypes: true }).catch(() => [])

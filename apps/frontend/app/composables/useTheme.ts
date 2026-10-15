@@ -10,7 +10,7 @@ export interface UseTheme {
 const KEY = 'claudeboard-theme'
 const theme = ref<Theme>('dark')
 
-function apply(t: Theme): void {
+const apply = (t: Theme): void => {
   theme.value = t
   document.documentElement.dataset.theme = t
 }
@@ -26,7 +26,7 @@ export function useTheme(): UseTheme {
     } catch {}
     apply(saved === 'light' || saved === 'dark' ? saved : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
   }
-  function toggle(): void {
+  const toggle = (): void => {
     const next: Theme = theme.value === 'dark' ? 'light' : 'dark'
     apply(next)
     try {

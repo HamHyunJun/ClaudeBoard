@@ -39,11 +39,11 @@ const error = ref('')
 const project = computed(() => cmd.projects.value.find((p) => p.id === cmd.openTargetId.value))
 const open = computed(() => !!project.value)
 
-function close(): void {
+const close = (): void => {
   cmd.openTargetId.value = null
 }
 
-async function submit(): Promise<void> {
+const submit = async (): Promise<void> => {
   const p = project.value
   if (!p) return
   opening.value = true

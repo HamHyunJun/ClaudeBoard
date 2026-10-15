@@ -94,12 +94,12 @@ let pingTimer: ReturnType<typeof setInterval> | undefined
 let started = false
 const alertHandlers = new Set<(a: Alert) => void>()
 
-function backendOrigin(): string {
+const backendOrigin = (): string => {
   const configured = useRuntimeConfig().public.backendOrigin as string
   return configured || window.location.origin
 }
 
-function wsUrl(): string {
+const wsUrl = (): string => {
   const u = new URL(backendOrigin())
   u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:'
   u.pathname = WS_PATH
@@ -108,7 +108,7 @@ function wsUrl(): string {
   return u.toString()
 }
 
-function connect(): void {
+const connect = (): void => {
   conn.value = 'connecting'
   ws = new WebSocket(wsUrl())
   ws.onopen = () => {
@@ -131,7 +131,7 @@ function connect(): void {
   ws.onerror = () => ws?.close()
 }
 
-function handle(msg: ServerMessage): void {
+const handle = (msg: ServerMessage): void => {
   switch (msg.t) {
     case 'hello':
       demo.value = msg.demo
@@ -172,11 +172,11 @@ function handle(msg: ServerMessage): void {
   }
 }
 
-function send(msg: ClientMessage): void {
+const send = (msg: ClientMessage): void => {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
 }
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
+const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const res = await fetch(new URL(path, backendOrigin()), {
     ...init,
     headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) }
@@ -230,7 +230,7 @@ export function useCommander(): Commander {
   })
 
   /** 터미널 출력 구독. 첫 구독자일 때만 서버에 subscribe 를 보낸다 */
-  function subscribe(projectId: string, fn: OutputListener): () => void {
+  const subscribe = (projectId: string, fn: OutputListener): () => void => {
     let set = listeners.get(projectId)
     if (!set) {
       set = new Set()
@@ -247,12 +247,12 @@ export function useCommander(): Commander {
     }
   }
 
-  function onAlert(fn: (a: Alert) => void): () => boolean {
+  const onAlert = (fn: (a: Alert) => void): () => boolean => {
     alertHandlers.add(fn)
     return () => alertHandlers.delete(fn)
   }
 
-  function openTerminal(id: string): void {
+  const openTerminal = (id: string): void => {
     selectedId.value = id
     terminalOpen.value = true
   }

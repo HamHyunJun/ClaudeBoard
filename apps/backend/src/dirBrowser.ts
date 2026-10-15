@@ -21,7 +21,7 @@ export function listDirs(path?: string): DirListing {
   return { path: abs, parent: parent === abs ? null : parent, dirs }
 }
 
-function isDir(p: string): boolean {
+const isDir = (p: string): boolean => {
   try {
     return statSync(p).isDirectory()
   } catch {

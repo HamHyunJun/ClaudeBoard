@@ -52,20 +52,20 @@ const usageById = computed(() => {
 })
 const hogThreshold = computed(() => (cmd.demo.value ? 300_000 : 400_000))
 
-function setStrip(id: string, el: unknown): void {
+const setStrip = (id: string, el: unknown): void => {
   if (el) strips.set(id, el as InstanceType<typeof SessionStrip>)
   else strips.delete(id)
 }
 
-function select(id: string): void {
+const select = (id: string): void => {
   cmd.selectedId.value = cmd.selectedId.value === id ? null : id
 }
 
-function focusStrip(id: string): void {
+const focusStrip = (id: string): void => {
   listEl.value?.querySelector<HTMLButtonElement>(`[data-project="${CSS.escape(id)}"] .ident`)?.focus()
 }
 
-function onKeydown(e: KeyboardEvent): void {
+const onKeydown = (e: KeyboardEvent): void => {
   const target = e.target as HTMLElement
   if (target.closest('input, textarea')) return
   const ids = cmd.sessionList.value.map((x) => x.project.id)
