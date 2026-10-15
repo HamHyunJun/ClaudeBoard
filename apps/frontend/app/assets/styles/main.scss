@@ -1,0 +1,138 @@
+:root {
+  color-scheme: dark;
+
+  // 바탕: 청회색 계열 4단 (가장 어두운 것이 배경)
+  --ink-0: #0f1620;
+  --ink-1: #141d28;
+  --ink-2: #1b2633;
+  --ink-3: #243142;
+  --rule: #2a3747;
+  --rule-strong: #3a4a5e;
+
+  --text: #e3e9ef;
+  --text-2: #a3b1c0;
+  --text-3: #74859a;
+
+  // 상태 신호색 (텍스트 라벨과 항상 함께 쓴다)
+  --idle: #7fa3c2;
+  --thinking: #a99bf0;
+  --executing: #f0973a;
+  --approval: #f2577a;
+  --ok: #57c79a;
+  --focus: #9fd1ff;
+
+  --idle-wash: rgb(127 163 194 / 0.1);
+  --thinking-wash: rgb(169 155 240 / 0.12);
+  --executing-wash: rgb(240 151 58 / 0.13);
+  --approval-wash: rgb(242 87 122 / 0.14);
+
+  --font-ui: 'Archivo', 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', 'D2Coding', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  // 타입 스케일 (1.2 비율, 본문 14px 기준 — 정보 밀도 우선)
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.875rem;
+  --fs-lg: 1.05rem;
+  --fs-xl: 1.26rem;
+  --fs-2xl: 1.8rem;
+
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+
+  // 모션: 기본 감속 곡선과 살짝 튀는 스프링 (linear() 근사)
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --spring: linear(0, 0.06 3%, 0.24 7%, 0.52 12%, 0.79 18%, 0.96 24%, 1.03 30%, 1.04 35%, 1.02 45%, 1 60%, 1);
+  --dur-fast: 140ms;
+  --dur: 220ms;
+  --dur-spring: 520ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--ink-0);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#__nuxt {
+  height: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  @include focus-ring;
+}
+
+::selection {
+  background: rgb(159 209 255 / 0.3);
+}
+
+code,
+kbd,
+.code {
+  font-family: var(--font-code);
+  font-size: 0.92em;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 0.35em;
+  border: 1px solid var(--rule-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--r-sm);
+  background: var(--ink-2);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.sr-only {
+  @include visually-hidden;
+}
+
+// 얇은 스크롤바
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
