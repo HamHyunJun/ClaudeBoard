@@ -79,6 +79,8 @@ export interface SessionSnapshot {
   status: SessionStatus
   /** 상태가 마지막으로 바뀐 시각 (epoch ms) */
   statusSince: number
+  /** 현재 작업(IDLE이 아닌 구간)이 시작된 시각. 대기 중이면 없음. 경과 시간 표시용 */
+  busySince?: number
   /** 마지막 출력 시각 */
   lastOutputAt?: number
   /** 화면 요약용 마지막 의미 있는 출력 한 줄 */
