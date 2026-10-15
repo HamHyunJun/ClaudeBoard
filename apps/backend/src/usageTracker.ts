@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { open, readdir, stat } from 'node:fs/promises'
 import { join, sep } from 'node:path'
 import type { Alert, OfficialUsage, ProjectConfig, ProjectUsage, TokenBreakdown, UsageSummary } from '@claudeboard/shared'
@@ -110,7 +110,14 @@ export class UsageTracker extends EventEmitter {
   }
 
   setProjects(projects: ProjectConfig[]) {
-    this.projects = projects
+    // 로그의 cwd 는 심볼릭 링크가 풀린 실제 경로(macOS /var → /private/var)라 같은 기준으로 맞춘다
+    this.projects = projects.map((p) => {
+      try {
+        return { ...p, cwd: realpathSync(p.cwd) }
+      } catch {
+        return p
+      }
+    })
   }
 
   start(intervalMs = 3000) {
