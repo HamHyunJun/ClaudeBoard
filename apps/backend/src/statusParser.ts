@@ -201,7 +201,7 @@ const USER_PROMPT = /^\s*[│┃]?\s*>\s+\S/
  * shortcut: 도구 종류만 보는 휴리스틱, 'review' 는 표식이 있을 때만 잡힌다.
  */
 function inferStage(lines: string[]): WorkflowStage | null {
-  let from = findLastIndex(lines, (l) => USER_PROMPT.test(l)) + 1
+  const from = findLastIndex(lines, (l) => USER_PROMPT.test(l)) + 1
   let best = -1
   for (const l of lines.slice(from)) {
     const m = l.match(TOOL_HEADER)
