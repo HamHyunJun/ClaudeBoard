@@ -100,7 +100,8 @@ export class Session extends EventEmitter {
       this.pushChunk(msg)
       this.term.write(msg)
       this.emit('output', msg)
-      this.update({ process: 'exited', pid: undefined, exitCode, status: 'IDLE', approval: undefined, activeTool: undefined })
+      this.busySince = null
+      this.update({ process: 'exited', pid: undefined, exitCode, status: 'IDLE', approval: undefined, activeTool: undefined, busySince: undefined })
       this.emitAlert({
         level: exitCode === 0 ? 'info' : 'warning',
         kind: 'process-exit',
@@ -251,7 +252,10 @@ export class Session extends EventEmitter {
     if (screen.status !== prev.status) patch.statusSince = now
 
     // 상태 전이에 따른 알림
-    if (screen.status !== 'IDLE' && this.busySince === null) this.busySince = now
+    if (screen.status !== 'IDLE' && this.busySince === null) {
+      this.busySince = now
+      patch.busySince = now
+    }
     if (screen.status === 'REQUIRES_APPROVAL' && prev.status !== 'REQUIRES_APPROVAL') {
       this.emitAlert({
         level: 'critical',
@@ -270,6 +274,7 @@ export class Session extends EventEmitter {
         })
       }
       this.busySince = null
+      patch.busySince = undefined
     }
     this.update(patch)
   }

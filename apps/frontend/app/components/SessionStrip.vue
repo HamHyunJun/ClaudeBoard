@@ -128,7 +128,12 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
         </ul>
       </div>
 
-      <WorkflowTrack class="wf" :workflow="session?.workflow ?? { stage: null, percent: 0, source: 'none' }" :status="status" />
+      <WorkflowTrack
+        class="wf"
+        :workflow="session?.workflow ?? { stage: null, percent: 0, source: 'none' }"
+        :status="status"
+        :busy-since="running ? session?.busySince : undefined"
+      />
 
       <div class="tokens" :title="hot ? '최근 5분 토큰 사용량이 급증했습니다' : undefined">
         <span class="tok-num">{{ formatTokens(usage ? usage.today.input + usage.today.output + usage.today.cacheWrite + usage.today.cacheRead : 0) }}</span>

@@ -6,7 +6,8 @@ import { WORKFLOW_STAGES } from '@claudeboard/shared'
  * plan → execute → review → verify 4구간 트랙.
  * 각 구간은 진행률에 따라 채워지고, 실행 중이면 주황색 바가 흐른다.
  */
-const props = defineProps<{ workflow: WorkflowProgress; status: SessionStatus; compact?: boolean }>()
+const props = defineProps<{ workflow: WorkflowProgress; status: SessionStatus; busySince?: number; compact?: boolean }>()
+const now = useNow()
 
 const LABELS: Record<string, string> = { plan: '계획', execute: '실행', review: '검토', verify: '검증' }
 // 백엔드 STAGE_BASE 와 같은 경계값
@@ -21,10 +22,13 @@ const segments = computed(() =>
     return { stage, label: LABELS[stage]!, fill, current, done: fill >= 1 }
   })
 )
+// 단계·Todo 신호가 없는 작업(일반 질문 등)은 퍼센트를 지어내지 않고 흐르는 바 + 경과 시간만 보여준다
+const indeterminate = computed(() => props.workflow.source === 'none' && props.busySince !== undefined)
+const elapsed = computed(() => (props.busySince === undefined ? '' : formatElapsed(now.value - props.busySince)))
 const tone = computed(() => (props.status === 'EXECUTING' ? 'executing' : props.status === 'REQUIRES_APPROVAL' ? 'approval' : 'calm'))
 const valueText = computed(() => {
   const w = props.workflow
-  if (w.source === 'none') return '워크플로우 단계가 아직 감지되지 않았습니다'
+  if (w.source === 'none') return indeterminate.value ? `작업 중, 경과 ${elapsed.value}` : '워크플로우 단계가 아직 감지되지 않았습니다'
   const stage = w.stage ? LABELS[w.stage] : '진행'
   const todos = w.todos ? `, 할 일 ${w.todos.done}/${w.todos.total}` : ''
   return `${stage} 단계, ${w.percent}%${todos}`
@@ -34,19 +38,19 @@ const valueText = computed(() => {
 <template>
   <div
     class="track"
-    :class="[tone, { compact, empty: workflow.source === 'none' }]"
+    :class="[tone, { compact, empty: workflow.source === 'none', indeterminate }]"
     role="progressbar"
     aria-label="워크플로우 진행률"
-    :aria-valuenow="workflow.percent"
-    aria-valuemin="0"
-    aria-valuemax="100"
+    :aria-valuenow="indeterminate ? undefined : workflow.percent"
+    :aria-valuemin="indeterminate ? undefined : 0"
+    :aria-valuemax="indeterminate ? undefined : 100"
     :aria-valuetext="valueText"
   >
     <div v-for="seg in segments" :key="seg.stage" class="seg" :class="{ current: seg.current, done: seg.done }">
       <div class="bar"><span class="fill" :style="{ transform: `scaleX(${seg.fill})` }" /></div>
       <span v-if="!compact" class="label">{{ seg.label }}</span>
     </div>
-    <span v-if="!compact" class="pct">{{ workflow.source === 'none' ? '—' : `${workflow.percent}%` }}</span>
+    <span v-if="!compact" class="pct">{{ workflow.source !== 'none' ? `${workflow.percent}%` : elapsed || '—' }}</span>
   </div>
 </template>
 
@@ -122,13 +126,22 @@ const valueText = computed(() => {
 }
 
 .pct {
-  min-width: 3.2ch;
+  min-width: 4.5ch;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   padding-left: 6px;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-2);
   text-align: right;
   align-self: start;
+}
+
+// 진행률을 알 수 없는 작업: 4구간 전체에 줄무늬가 흐른다
+.indeterminate .bar {
+  background: linear-gradient(90deg, var(--ink-3) 0%, color-mix(in srgb, var(--fill) 70%, var(--ink-3)) 50%, var(--ink-3) 100%);
+  background-size: 200% 100%;
+  animation: flow 1.6s linear infinite;
 }
 
 @keyframes flow {
