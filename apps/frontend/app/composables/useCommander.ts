@@ -3,6 +3,8 @@ import type {
   ClientMessage,
   CreateProjectBody,
   DirListing,
+  OpenAppId,
+  OpenProjectBody,
   ProjectConfig,
   ServerMessage,
   SessionSnapshot,
@@ -25,6 +27,8 @@ const usage = ref<UsageSummary | null>(null)
 const alerts = ref<Alert[]>([])
 const selectedId = ref<string | null>(null)
 const terminalOpen = ref(false)
+// 폴더 열기 확인 대화상자의 대상 프로젝트 (null 이면 닫힘)
+const openTargetId = ref<string | null>(null)
 // 선택을 해제해도 터미널이 엉뚱한 세션으로 바뀌지 않도록 마지막 선택을 기억
 const lastSelectedId = ref<string | null>(null)
 watch(selectedId, (id) => {
@@ -204,6 +208,7 @@ export function useCommander() {
     lastError: readonly(lastError),
     selectedId,
     terminalOpen,
+    openTargetId,
     sessionList,
     pendingApprovals,
     selected,
@@ -221,6 +226,8 @@ export function useCommander() {
     restart: (projectId: string) => send({ t: 'restart', projectId }),
     addProject: (body: CreateProjectBody) => api<ProjectConfig>('/api/projects', { method: 'POST', body: JSON.stringify(body) }),
     listDirs: (path?: string) => api<DirListing>(`/api/fs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
+    openProject: (id: string, app: OpenAppId) =>
+      api<void>(`/api/projects/${encodeURIComponent(id)}/open`, { method: 'POST', body: JSON.stringify({ app } satisfies OpenProjectBody) }),
     removeProject: (id: string) => api<void>(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     reconnectNow: () => {
       clearTimeout(retryTimer)

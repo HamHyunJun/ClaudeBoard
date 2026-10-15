@@ -25,6 +25,7 @@ ClaudeBoard는 이 세 가지를 한 화면에서 해결하는 "관제탑"입니
 | 진행률 | `plan → execute → review → verify` 단계 표식과 Todo 체크리스트로 0~100%를 계산합니다. 단계·Todo 신호가 없는 작업(일반 질문 등)은 퍼센트를 지어내지 않고 경과 시간과 흐르는 바로 표시합니다. |
 | 토큰 센터 | 오늘 토큰과 API 단가 환산 비용, 5시간 사용 창 리셋 카운트다운, 주간·월간 잔여량, 프로젝트별 순위와 30분 스파크라인을 보여주고 토큰 급증(Token Hog)을 경고합니다. |
 | 승인 | 승인 요청이 감지되면 상단 배너에 [승인]/[거절]이 뜹니다. 클릭 한 번으로 해당 PTY에 응답 키가 전달됩니다. |
+| 폴더 열기 | 세션을 선택하면 나오는 **폴더 열기**로 프로젝트 폴더를 VS Code·Cursor·Finder·터미널 중 하나로 엽니다. 열기 전에 앱을 확인받고, 마지막으로 고른 앱을 기본값으로 기억합니다. macOS 전용입니다. |
 | 알림 | 승인 요청, 작업 완료, 토큰 급증을 화면 토스트와 브라우저 데스크톱 알림(창이 가려져 있을 때)으로 알립니다. |
 
 ## 빠른 시작
@@ -75,6 +76,7 @@ claudeboard/
 │   │   ├── officialUsage.ts  Claude 계정의 5시간·주간 사용률과 리셋 시각 조회 (로그 합산보다 우선하는 출처)
 │   │   ├── pricing.ts        모델별 단가표와 비용 계산
 │   │   ├── projectStore.ts   ~/.claudeboard/projects.json 저장소
+│   │   ├── openApp.ts        프로젝트 폴더를 허용 목록의 앱으로 열기 (open -a, 셸 없이 인자 배열로 실행)
 │   │   ├── dirBrowser.ts     프로젝트 추가용 폴더 탐색 (하위 디렉터리 이름만 반환)
 │   │   └── config.ts         환경 변수
 │   ├── mock/mock-claude.mjs  데모·테스트용 Claude Code 흉내 CLI
@@ -146,7 +148,7 @@ Claude Code는 대화마다 `~/.claude/projects/<인코딩된 경로>/<세션>.j
 | 브라우저 → 서버 | `subscribe`, `unsubscribe`, `input`(원시 키), `prompt`(텍스트+엔터), `resize`, `approve`, `start`, `stop`, `restart`, `ping` |
 | 서버 → 브라우저 | `hello`(접속 시 전체 상태), `projects`, `session`, `session-removed`, `replay`, `output`(구독자에게만), `usage`, `alert`, `error`, `pong` |
 
-REST: `GET /api/health`, `GET/POST /api/projects`, `DELETE /api/projects/:id`, `GET /api/fs?path=`(하위 폴더 목록, 숨김 폴더 제외), `GET /api/sessions`, `GET /api/usage`, `GET /api/alerts`
+REST: `GET /api/health`, `GET/POST /api/projects`, `POST /api/projects/:id/open`(`{ app }`, 등록된 프로젝트 경로를 허용 목록의 앱으로 열기), `DELETE /api/projects/:id`, `GET /api/fs?path=`(하위 폴더 목록, 숨김 폴더 제외), `GET /api/sessions`, `GET /api/usage`, `GET /api/alerts`
 
 ## 환경 변수 (백엔드)
 

@@ -87,6 +87,7 @@ useHead({
       @focus-prompt="(id) => rack?.focusPrompt(id)"
     />
     <AddProjectDialog :open="addOpen" @close="addOpen = false" />
+    <OpenProjectDialog />
     <ToastStack />
   </div>
 </template>

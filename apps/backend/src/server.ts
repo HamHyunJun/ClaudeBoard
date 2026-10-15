@@ -4,11 +4,12 @@ import type { IncomingMessage } from 'node:http'
 import Fastify, { type FastifyInstance } from 'fastify'
 import fastifyStatic from '@fastify/static'
 import { WebSocketServer, WebSocket } from 'ws'
-import type { Alert, ClientMessage, CreateProjectBody, ServerMessage } from '@claudeboard/shared'
+import type { Alert, ClientMessage, CreateProjectBody, OpenProjectBody, ServerMessage } from '@claudeboard/shared'
 import { WS_PATH } from '@claudeboard/shared'
 import type { ServerConfig } from './config.ts'
 import { ProjectStore } from './projectStore.ts'
 import { listDirs } from './dirBrowser.ts'
+import { isOpenApp, openInApp } from './openApp.ts'
 import { SessionManager } from './sessionManager.ts'
 import { OfficialUsageClient } from './officialUsage.ts'
 import { UsageTracker } from './usageTracker.ts'
@@ -131,6 +132,20 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
       return reply.code(201).send(project)
     } catch (err) {
       return reply.code(400).send({ error: (err as Error).message })
+    }
+  })
+
+  // 경로는 요청이 아니라 등록된 프로젝트에서만 가져오고, 앱은 허용 목록으로 제한한다
+  app.post<{ Params: { id: string }; Body: OpenProjectBody }>('/api/projects/:id/open', async (req, reply) => {
+    const project = store.list().find((p) => p.id === req.params.id)
+    if (!project) return reply.code(404).send({ error: '프로젝트를 찾을 수 없습니다' })
+    const target = req.body?.app
+    if (!isOpenApp(target)) return reply.code(400).send({ error: '지원하지 않는 응용 프로그램입니다' })
+    try {
+      await openInApp(target, project.cwd)
+      return reply.code(204).send()
+    } catch (err) {
+      return reply.code(500).send({ error: (err as Error).message })
     }
   })
 
