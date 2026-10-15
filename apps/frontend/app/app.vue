@@ -22,9 +22,9 @@ function onGlobalKey(e: KeyboardEvent) {
     paletteOpen.value = !paletteOpen.value
     return
   }
-  // xterm 안의 Esc 는 Claude Code(작업 중단)로 가야 하므로 가로채지 않는다
+  // xterm 안의 Esc 는 Claude Code(작업 중단)로, 입력창의 Esc 는 입력 해제용이라 터미널을 접지 않는다
   if (e.key === 'Escape' && cmd.terminalOpen.value && !paletteOpen.value && !addOpen.value) {
-    if ((e.target as HTMLElement)?.closest?.('.xterm')) return
+    if ((e.target as HTMLElement)?.closest?.('.xterm, input, textarea')) return
     cmd.terminalOpen.value = false
   }
 }
