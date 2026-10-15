@@ -26,20 +26,20 @@
   --executing-wash: rgb(240 151 58 / 0.13);
   --approval-wash: rgb(242 87 122 / 0.14);
 
-  --font-ui: 'Archivo', 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --font-ui: 'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
   --font-code: 'JetBrains Mono', 'D2Coding', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-  // 타입 스케일 (1.2 비율, 본문 14px 기준 — 정보 밀도 우선)
-  --fs-xs: 0.75rem;
-  --fs-sm: 0.8125rem;
-  --fs-md: 0.875rem;
-  --fs-lg: 1.05rem;
-  --fs-xl: 1.26rem;
+  // 타입 스케일 (본문 15px 기준 — 한눈에 읽히는 크기 우선)
+  --fs-xs: 0.78rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 0.94rem;
+  --fs-lg: 1.12rem;
+  --fs-xl: 1.35rem;
   --fs-2xl: 1.8rem;
 
   --r-sm: 4px;
-  --r-md: 8px;
-  --r-lg: 14px;
+  --r-md: 12px;
+  --r-lg: 18px;
 
   // 모션: 기본 감속 곡선과 살짝 튀는 스프링 (linear() 근사)
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -50,6 +50,7 @@
 
   --scrim: rgb(6 10 16 / 0.62);
   --shadow: rgb(0 0 0 / 0.55);
+  --shadow-soft: rgb(0 0 0 / 0.28);
   --swatch-cache: #4f6378;
 }
 
@@ -82,6 +83,7 @@
 
   --scrim: rgb(24 33 43 / 0.35);
   --shadow: rgb(24 33 43 / 0.18);
+  --shadow-soft: rgb(24 33 43 / 0.07);
   --swatch-cache: #9aaabb;
 }
 
@@ -102,7 +104,7 @@ body {
   color: var(--text);
   font-family: var(--font-ui);
   font-size: var(--fs-md);
-  line-height: 1.45;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

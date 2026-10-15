@@ -49,6 +49,8 @@ function isChrome(line: string): boolean {
   if (/^[╭╰─━│┃\s]+[╮╯─━│┃\s]*$/u.test(t)) return true
   if (/^[│┃]?\s*>\s*[│┃]?$/u.test(t)) return true
   if (/\? for shortcuts|shift\+tab|auto-accept|bypass permissions/i.test(t)) return true
+  // 하단 상태줄(HUD): `[omc#…] | Model: …`, `Model: … | ctx …` 처럼 | 로 나뉜 메타 정보
+  if (/^\[[\w#.-]+\]\s*\|/.test(t) || (/\bModel:/i.test(t) && t.includes('|'))) return true
   return false
 }
 

@@ -71,6 +71,9 @@ function send(text: string) {
   draft.value = ''
 }
 
+// 터미널 출력 앞의 장식 기호(⏺ ● ⎿ > 등)는 대시보드에서 의미가 없으므로 걷어낸다
+const activity = computed(() => props.session?.lastLine?.replace(/^[\s⏺●○⎿✻✢✶·>│┃*-]+/u, '').trim() || undefined)
+
 defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 </script>
 
@@ -96,13 +99,13 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
         @dblclick="emit('open')"
       >
         <span class="name">{{ project.name }}</span>
-        <span class="path code">{{ shortPath(project.cwd) }}</span>
+        <span class="path">{{ shortPath(project.cwd) }}</span>
       </button>
 
       <div class="state">
         <StatusPulse :status="status" :offline="!running" />
         <span class="state-label">{{ statusLabel }}</span>
-        <span v-if="session?.activeTool && running && status !== 'IDLE'" class="tool code">{{ session.activeTool }}</span>
+        <span v-if="session?.activeTool && running && status !== 'IDLE'" class="tool">{{ session.activeTool }}</span>
         <span v-if="elapsed" class="elapsed">{{ elapsed }}</span>
       </div>
 
@@ -121,9 +124,9 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
         </button>
       </div>
 
-      <p class="activity code" :class="{ muted: !session?.lastLine }">
+      <p class="activity" :class="{ muted: !activity }">
         <template v-if="session?.error">{{ session.error }}</template>
-        <template v-else>{{ session?.lastLine ?? (running ? '출력을 기다리는 중' : '세션이 꺼져 있습니다. 시작하면 이 디렉터리에서 Claude Code가 실행됩니다.') }}</template>
+        <template v-else>{{ activity ?? (running ? '출력을 기다리는 중' : '세션이 꺼져 있습니다. 시작하면 이 디렉터리에서 Claude Code가 실행됩니다.') }}</template>
       </p>
     </div>
 
@@ -181,13 +184,14 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   --wash: transparent;
   position: relative;
   display: grid;
-  grid-template-columns: 4px minmax(0, 1fr);
+  grid-template-columns: 5px minmax(0, 1fr);
   // 터미널 패널 개폐로 폭이 바뀌므로 뷰포트가 아니라 스트립 폭 기준으로 배치를 바꾼다
   container-type: inline-size;
   min-width: 0;
   background: var(--ink-1);
   border: 1px solid var(--rule);
   border-radius: var(--r-md);
+  box-shadow: 0 1px 2px var(--shadow-soft);
   transition:
     border-color var(--dur) var(--ease-out),
     background-color var(--dur) var(--ease-out);
@@ -236,9 +240,9 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
     'ident state wf tokens actions'
     'activity activity activity activity activity';
   align-items: center;
-  column-gap: 20px;
-  row-gap: 6px;
-  padding: 12px 14px 10px 14px;
+  column-gap: 28px;
+  row-gap: 10px;
+  padding: 18px 22px 16px 20px;
   // 상태색이 아주 옅게 스트립 왼쪽에서 번진다
   background: linear-gradient(90deg, var(--wash), transparent 45%);
   border-radius: 0 var(--r-md) 0 0;
@@ -265,8 +269,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   white-space: nowrap;
   font-size: var(--fs-lg);
   font-weight: 650;
-  font-stretch: 92%;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 .path {
   max-width: 100%;
@@ -293,8 +296,8 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   }
 }
 .tool {
-  padding: 0 5px;
-  border-radius: 3px;
+  padding: 1px 8px;
+  border-radius: 999px;
   background: var(--ink-3);
   font-size: var(--fs-xs);
   color: var(--text-2);
@@ -345,7 +348,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   color: var(--text-2);
   &.muted {
     color: var(--text-3);
@@ -372,18 +375,17 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   display: flex;
   min-width: 0;
   gap: 8px;
-  padding: 4px 14px 8px;
+  padding: 4px 22px 12px 20px;
 }
 .prompt-input {
   flex: 1;
   min-width: 0;
-  height: 34px;
-  padding: 0 12px;
+  height: 40px;
+  padding: 0 14px;
   border: 1px solid var(--rule-strong);
   border-radius: var(--r-sm);
   background: var(--ink-0);
-  font-family: var(--font-code);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   transition: border-color var(--dur-fast) var(--ease-out);
   &::placeholder {
     color: var(--text-3);
@@ -403,7 +405,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 0 14px 12px;
+  padding: 0 22px 18px 20px;
 }
 .spacer {
   flex: 1;
@@ -411,8 +413,8 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 
 .btn {
   @include pressable;
-  height: 34px;
-  padding: 0 14px;
+  height: 38px;
+  padding: 0 18px;
   border: 1px solid var(--rule-strong);
   border-radius: var(--r-sm);
   background: var(--ink-2);
@@ -438,20 +440,18 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 
 .chip {
   @include pressable;
-  height: 28px;
-  padding: 0 10px;
+  height: 32px;
+  padding: 0 14px;
   border: 1px solid var(--rule-strong);
   border-radius: 999px;
   background: transparent;
-  font-family: var(--font-code);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--text-2);
   &:hover:not(:disabled) {
     border-color: var(--text-3);
     color: var(--text);
   }
   &.ghost {
-    font-family: var(--font-ui);
     border-color: transparent;
   }
   &.danger:hover:not(:disabled),

@@ -100,3 +100,15 @@ test('승인 맥락은 다이얼로그 상자 안쪽만 담는다', () => {
   assert.deepEqual(r.approval?.context, ['Bash command', 'rm -rf dist'])
   assert.equal(r.activeTool, 'Bash')
 })
+
+test('하단 상태줄(HUD)은 마지막 출력으로 잡지 않는다', () => {
+  const r = analyzeScreen([
+    '⏺ 모든 단계를 완료했습니다.',
+    '╭──────────────╮',
+    '│ >            │',
+    '╰──────────────╯',
+    '[omc#5.6.2l] | Model: Sonnet 5.5',
+    '  ? for shortcuts'
+  ])
+  assert.equal(r.lastLine, '⏺ 모든 단계를 완료했습니다.')
+})
