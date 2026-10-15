@@ -1,0 +1,27 @@
+{
+  "name": "@claudeboard/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NUXT_PUBLIC_BACKEND_ORIGIN=http://127.0.0.1:4317 nuxt dev --port 3000",
+    "dev:demo": "NUXT_PUBLIC_BACKEND_ORIGIN=http://127.0.0.1:4317 nuxt dev --port 3000",
+    "build": "nuxt generate",
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@claudeboard/shared": "workspace:*",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "nuxt": "^4.1.3",
+    "vue": "^3.5.22"
+  },
+  "devDependencies": {
+    "sass-embedded": "^1.93.2",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.1.1"
+  }
+}

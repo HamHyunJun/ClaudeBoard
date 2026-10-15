@@ -1,0 +1,16 @@
+{
+  "name": "claudeboard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Claude Multi-Project Commander — 로컬 Claude Code 인스턴스 중앙 관제 대시보드",
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=20.19" },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @claudeboard/backend --filter @claudeboard/frontend dev",
+    "dev:demo": "pnpm -r --parallel --filter @claudeboard/backend --filter @claudeboard/frontend dev:demo",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "start": "pnpm --filter @claudeboard/backend start"
+  }
+}
