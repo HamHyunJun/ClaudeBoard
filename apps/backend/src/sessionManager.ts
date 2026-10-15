@@ -265,6 +265,14 @@ export class Session extends EventEmitter {
         body: screen.approval?.question ?? '터미널에서 승인을 기다리고 있습니다.'
       })
     }
+    if (screen.status === 'ASKING' && prev.status !== 'ASKING') {
+      this.emitAlert({
+        level: 'critical',
+        kind: 'question',
+        title: `${this.project.name}: 답변 필요`,
+        body: screen.lastLine ?? '선택지에 답해야 작업이 이어집니다.'
+      })
+    }
     if (screen.status === 'IDLE' && prev.status !== 'IDLE') {
       if (this.busySince !== null && now - this.busySince >= TASK_DONE_MIN_MS) {
         this.emitAlert({

@@ -25,7 +25,7 @@ const segments = computed(() =>
 // 단계·Todo 신호가 없는 작업(일반 질문 등)은 퍼센트를 지어내지 않고 흐르는 바 + 경과 시간만 보여준다
 const indeterminate = computed(() => props.workflow.source === 'none' && props.busySince !== undefined)
 const elapsed = computed(() => (props.busySince === undefined ? '' : formatElapsed(now.value - props.busySince)))
-const tone = computed(() => (props.status === 'EXECUTING' ? 'executing' : props.status === 'REQUIRES_APPROVAL' ? 'approval' : 'calm'))
+const tone = computed(() => (props.status === 'EXECUTING' ? 'executing' : props.status === 'REQUIRES_APPROVAL' ? 'approval' : props.status === 'ASKING' ? 'asking' : 'calm'))
 const valueText = computed(() => {
   const w = props.workflow
   if (w.source === 'none') return indeterminate.value ? `작업 중, 경과 ${elapsed.value}` : '워크플로우 단계가 아직 감지되지 않았습니다'
@@ -71,6 +71,9 @@ const valueText = computed(() => {
   }
   &.approval {
     --fill: var(--approval);
+  }
+  &.asking {
+    --fill: var(--asking);
   }
 }
 

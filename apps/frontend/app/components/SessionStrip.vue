@@ -54,19 +54,61 @@ async function removeSession() {
   }
   clearTimeout(confirmTimer)
   confirmRemove.value = false
+  menuEl.value?.hidePopover()
   try {
     await cmd.removeProject(props.project.id)
   } catch (err) {
-    useNotify().toast({ level: 'warning', title: (err as Error).message, projectId: props.project.id })
+    useNotify().toast({ level: 'warning', title: (err as Error).message })
   }
 }
 onBeforeUnmount(() => clearTimeout(confirmTimer))
 
 // 박스의 빈 곳을 눌러도 이름을 누른 것과 같게 동작한다 (버튼·입력 등 자체 동작이 있는 요소는 제외)
 function onBoxClick(e: MouseEvent, action: 'select' | 'open') {
-  if ((e.target as HTMLElement).closest('button, input, a, form, [role=group]')) return
+  if ((e.target as HTMLElement).closest('button, input, a, form, [role=group], [role=menu]')) return
   if (action === 'select') emit('select')
   else emit('open')
+}
+
+// 더보기 메뉴: 팝오버(최상위 레이어)라 펼침 영역의 overflow 에 잘리지 않는다. 위치는 버튼 기준으로 직접 잡는다
+const moreBtn = ref<HTMLButtonElement>()
+const menuEl = ref<HTMLElement>()
+const menuOpen = ref(false)
+const menuId = computed(() => `strip-menu-${props.project.id}`)
+function toggleMenu() {
+  const menu = menuEl.value
+  const btn = moreBtn.value
+  if (!menu || !btn) return
+  if (menu.matches(':popover-open')) return menu.hidePopover()
+  menu.showPopover()
+  const r = btn.getBoundingClientRect()
+  const { width, height } = menu.getBoundingClientRect()
+  const below = r.bottom + 6 + height <= window.innerHeight
+  menu.style.left = `${Math.max(8, r.right - width)}px`
+  menu.style.top = `${below ? r.bottom + 6 : r.top - 6 - height}px`
+  menu.querySelector<HTMLElement>('[role=menuitem]')?.focus()
+}
+function onMenuToggle(e: Event) {
+  menuOpen.value = (e as ToggleEvent).newState === 'open'
+  if (!menuOpen.value) confirmRemove.value = false
+}
+function onMenuKeydown(e: KeyboardEvent) {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+  e.preventDefault()
+  e.stopPropagation() // 랙의 세션 간 이동 단축키와 겹치지 않게
+  const items = [...(menuEl.value?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? [])]
+  const i = items.indexOf(document.activeElement as HTMLElement)
+  items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
+}
+function act(fn: () => unknown) {
+  menuEl.value?.hidePopover()
+  fn()
+}
+
+function move(to: 'up' | 'down' | 'top') {
+  cmd.moveProject(props.project.id, to).catch((err: Error) =>
+    useNotify().toast({ level: 'warning', title: err.message })
+  )
 }
 
 function send(text: string) {
@@ -124,7 +166,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
         <span v-if="elapsed" class="elapsed">{{ elapsed }}</span>
         <ul v-if="session?.git?.length" class="git" aria-label="git 상태">
           <li v-for="g in session.git" :key="g.branch" class="repo">
-            <span class="branch">{{ g.branch }}</span>
+            <span class="branch" :title="g.branch">{{ g.branch }}</span>
             <span v-for="c in gitCounts(g)" :key="c.label" class="chg" :class="c.cls" :title="`${c.label} ${c.n}개`">
               {{ c.sym }}{{ c.n }}
             </span>
@@ -189,21 +231,43 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
             {{ qa.label }}
           </button>
           <span class="spacer" />
-          <button class="chip ghost" type="button" :aria-label="`${project.name} 폴더 열기`" @click="cmd.openTargetId.value = project.id">
-            폴더 열기
-          </button>
-          <button v-if="running" class="chip ghost" type="button" @click="cmd.restart(project.id)">재시작</button>
-          <button v-if="running" class="chip ghost danger" type="button" @click="cmd.stop(project.id)">중지</button>
           <button
-            class="chip ghost danger"
-            :class="{ armed: confirmRemove }"
+            ref="moreBtn"
+            class="more"
             type="button"
-            :aria-label="`${project.name} 세션 삭제`"
-            @click="removeSession"
-            @blur="confirmRemove = false"
+            aria-haspopup="menu"
+            :aria-expanded="menuOpen"
+            :aria-controls="menuId"
+            :aria-label="`${project.name} 더보기`"
+            @click="toggleMenu"
           >
-            {{ confirmRemove ? '정말 삭제?' : '삭제' }}
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <circle cx="3" cy="8" r="1.4" /><circle cx="8" cy="8" r="1.4" /><circle cx="13" cy="8" r="1.4" />
+            </svg>
           </button>
+          <div :id="menuId" ref="menuEl" class="menu" popover role="menu" :aria-label="`${project.name} 더보기 메뉴`" @toggle="onMenuToggle" @keydown="onMenuKeydown">
+            <button class="mi" type="button" role="menuitem" @click="act(() => move('top'))">맨 위로</button>
+            <button class="mi" type="button" role="menuitem" @click="act(() => move('up'))">위로 이동</button>
+            <button class="mi" type="button" role="menuitem" @click="act(() => move('down'))">아래로 이동</button>
+            <hr class="sep" />
+            <button class="mi" type="button" role="menuitem" @click="act(() => (cmd.openTargetId.value = project.id))">폴더 열기</button>
+            <template v-if="running">
+              <button class="mi" type="button" role="menuitem" @click="act(() => cmd.restart(project.id))">재시작</button>
+              <button class="mi danger" type="button" role="menuitem" @click="act(() => cmd.stop(project.id))">중지</button>
+            </template>
+            <hr class="sep" />
+            <button
+              class="mi danger"
+              :class="{ armed: confirmRemove }"
+              type="button"
+              role="menuitem"
+              :aria-label="`${project.name} 세션 삭제`"
+              @click="removeSession"
+              @blur="confirmRemove = false"
+            >
+              {{ confirmRemove ? '정말 삭제?' : '삭제' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -255,6 +319,11 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
     --c: var(--ok);
     --wash: var(--ok-wash);
     border-color: color-mix(in srgb, var(--ok) 45%, var(--rule));
+  }
+  &.asking {
+    --c: var(--asking);
+    --wash: var(--asking-wash);
+    border-color: color-mix(in srgb, var(--asking) 55%, var(--rule));
   }
   &.approval {
     --c: var(--approval);
@@ -396,6 +465,8 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   margin: 0 0 0 4px;
   padding: 0;
   list-style: none;
@@ -405,16 +476,23 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--idle-wash);
   color: var(--text-2);
 }
 .branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
   color: var(--text);
 }
 .chg {
+  flex: none;
   font-variant-numeric: tabular-nums;
   &.ok { color: var(--ok); }
   &.warn { color: var(--executing); }
@@ -476,6 +554,83 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 }
 .spacer {
   flex: 1;
+}
+
+.more {
+  @include pressable;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  fill: currentColor;
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--ink-3);
+    color: var(--text);
+  }
+}
+
+.menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 168px;
+  padding: 6px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-md);
+  background: var(--ink-1);
+  color: var(--text);
+  box-shadow: 0 12px 32px var(--shadow-soft);
+  // 열릴 때 살짝 커지며 나타난다
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: top right;
+  transition:
+    opacity 140ms var(--ease-out),
+    transform 140ms var(--ease-out),
+    overlay 140ms allow-discrete,
+    display 140ms allow-discrete;
+  &:popover-open {
+    opacity: 1;
+    transform: scale(1);
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+}
+.mi {
+  @include pressable;
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-size: var(--fs-sm);
+  text-align: left;
+  color: var(--text);
+  &:hover,
+  &:focus-visible {
+    background: var(--ink-3);
+  }
+  &.danger {
+    color: var(--approval);
+  }
+  &.armed {
+    background: var(--approval-wash);
+    font-weight: 600;
+  }
+}
+.sep {
+  height: 1px;
+  margin: 4px 6px;
+  border: 0;
+  background: var(--rule);
 }
 
 .btn {

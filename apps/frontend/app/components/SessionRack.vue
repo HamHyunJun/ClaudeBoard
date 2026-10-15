@@ -33,7 +33,11 @@ function onKeydown(e: KeyboardEvent) {
   const ids = cmd.sessionList.value.map((x) => x.project.id)
   if (!ids.length) return
   const current = cmd.selectedId.value ? ids.indexOf(cmd.selectedId.value) : -1
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+  if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && current >= 0) {
+    e.preventDefault()
+    const id = ids[current]!
+    cmd.moveProject(id, e.key === 'ArrowUp' ? 'up' : 'down').then(() => nextTick(() => focusStrip(id)))
+  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault()
     const next = e.key === 'ArrowDown' ? Math.min(ids.length - 1, current + 1) : Math.max(0, current - 1)
     cmd.selectedId.value = ids[next]!
@@ -60,7 +64,7 @@ defineExpose({
     <header class="rack-head">
       <h2 id="rack-title">세션</h2>
       <p class="hint">
-        <kbd>↑</kbd><kbd>↓</kbd> 이동 <kbd>t</kbd> 터미널 <kbd>/</kbd> 지시하기
+        <kbd>↑</kbd><kbd>↓</kbd> 이동 <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> 순서 변경 <kbd>t</kbd> 터미널 <kbd>/</kbd> 지시하기
       </p>
       <button class="add" type="button" @click="emit('add')">프로젝트 추가</button>
     </header>

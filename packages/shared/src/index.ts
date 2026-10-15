@@ -3,8 +3,8 @@
  * 백엔드와 프론트엔드가 같은 타입을 바라보도록 WebSocket 메시지·도메인 스키마를 한곳에 모은다.
  */
 
-/** 터미널 출력을 파싱해 얻는 세션 상태 4단계 */
-export type SessionStatus = 'IDLE' | 'THINKING' | 'EXECUTING' | 'REQUIRES_APPROVAL'
+/** 터미널 출력을 파싱해 얻는 세션 상태. ASKING 은 Claude 가 선택지를 내고 사용자의 답을 기다리는 상태 */
+export type SessionStatus = 'IDLE' | 'THINKING' | 'EXECUTING' | 'REQUIRES_APPROVAL' | 'ASKING'
 
 /** PTY 프로세스 자체의 생명주기 */
 export type ProcessState = 'stopped' | 'starting' | 'running' | 'exited' | 'error'
@@ -164,7 +164,7 @@ export type AlertLevel = 'info' | 'warning' | 'critical'
 export interface Alert {
   id: string
   level: AlertLevel
-  kind: 'token-hog' | 'approval' | 'task-done' | 'process-exit' | 'error'
+  kind: 'token-hog' | 'approval' | 'question' | 'task-done' | 'process-exit' | 'error'
   projectId?: string
   title: string
   body: string
@@ -216,6 +216,11 @@ export interface CreateProjectBody {
   command?: string
   args?: string[]
   autoStart?: boolean
+}
+
+/** PUT /api/projects/order — 세션 표시 순서. 목록에 없는 프로젝트는 뒤에 그대로 붙는다 */
+export interface ReorderProjectsBody {
+  ids: string[]
 }
 
 /** GET /api/fs — 프로젝트 경로 선택용 디렉터리 목록 */

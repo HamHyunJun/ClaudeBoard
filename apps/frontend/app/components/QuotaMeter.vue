@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 할당량 대비 사용량 바. 70% 이상 주의, 90% 이상 위험 색으로 바뀐다.
+ * 할당량 대비 사용량 바. 50% 미만 초록, 50% 이상 노랑, 80% 이상 빨강. 잔여 수치와 바 모두 같은 색을 쓴다.
  * percent 를 주면 Claude 가 알려준 실측 사용률을 그대로 쓰고, 아니면 used/limit 로 계산한다.
  */
 const props = defineProps<{ label: string; used?: number; limit?: number; percent?: number; detail?: string }>()
@@ -9,7 +9,7 @@ const pct = computed(() => {
   return props.limit && props.limit > 0 ? Math.min(100, ((props.used ?? 0) / props.limit) * 100) : 0
 })
 const remaining = computed(() => Math.max(0, 100 - pct.value))
-const level = computed(() => (pct.value >= 90 ? 'danger' : pct.value >= 70 ? 'warn' : 'ok'))
+const level = computed(() => (pct.value >= 80 ? 'danger' : pct.value >= 50 ? 'warn' : 'ok'))
 </script>
 
 <template>
@@ -38,14 +38,14 @@ const level = computed(() => (pct.value >= 90 ? 'danger' : pct.value >= 70 ? 'wa
 
 <style scoped lang="scss">
 .meter {
-  --fill: var(--idle);
+  --fill: var(--quota-ok);
   display: grid;
   gap: 5px;
   &.warn {
-    --fill: var(--executing);
+    --fill: var(--quota-mid);
   }
   &.danger {
-    --fill: var(--approval);
+    --fill: var(--quota-high);
   }
 }
 .row {
@@ -61,7 +61,8 @@ const level = computed(() => (pct.value >= 90 ? 'danger' : pct.value >= 70 ? 'wa
   font-size: var(--fs-sm);
   color: var(--text-2);
   strong {
-    color: var(--text);
+    color: var(--fill);
+    transition: color var(--dur) var(--ease-out);
   }
 }
 .sub {

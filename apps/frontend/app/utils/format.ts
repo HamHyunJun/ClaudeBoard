@@ -44,14 +44,16 @@ export const STATUS_LABEL: Record<SessionStatus, string> = {
   IDLE: '대기',
   THINKING: '추론 중',
   EXECUTING: '실행 중',
-  REQUIRES_APPROVAL: '승인 필요'
+  REQUIRES_APPROVAL: '승인 필요',
+  ASKING: '답변 필요'
 }
 
 export const STATUS_CLASS: Record<SessionStatus, string> = {
   IDLE: 'idle',
   THINKING: 'thinking',
   EXECUTING: 'executing',
-  REQUIRES_APPROVAL: 'approval'
+  REQUIRES_APPROVAL: 'approval',
+  ASKING: 'asking'
 }
 
 /** 홈 디렉터리를 ~ 로 줄여 표시 */

@@ -34,7 +34,7 @@ export function useNotify() {
   /** 승인 요청·작업 완료는 창이 가려져 있을 때 데스크톱 알림으로도 보낸다 */
   function desktop(alert: Alert, onClick?: () => void) {
     if (permission.value !== 'granted') return
-    if (!['approval', 'task-done', 'token-hog'].includes(alert.kind)) return
+    if (!['approval', 'question', 'task-done', 'token-hog'].includes(alert.kind)) return
     if (document.visibilityState === 'visible' && document.hasFocus()) return
     const n = new Notification(alert.title, { body: alert.body, tag: `${alert.kind}-${alert.projectId ?? ''}` })
     n.onclick = () => {

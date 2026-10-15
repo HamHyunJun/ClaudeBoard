@@ -4,7 +4,7 @@ import type { IncomingMessage } from 'node:http'
 import Fastify, { type FastifyInstance } from 'fastify'
 import fastifyStatic from '@fastify/static'
 import { WebSocketServer, WebSocket } from 'ws'
-import type { Alert, ClientMessage, CreateProjectBody, OpenProjectBody, ServerMessage } from '@claudeboard/shared'
+import type { Alert, ClientMessage, CreateProjectBody, OpenProjectBody, ReorderProjectsBody, ServerMessage } from '@claudeboard/shared'
 import { WS_PATH } from '@claudeboard/shared'
 import type { ServerConfig } from './config.ts'
 import { ProjectStore } from './projectStore.ts'
@@ -65,7 +65,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
       reply.header('access-control-allow-origin', req.headers.origin)
       reply.header('vary', 'origin')
       if (req.method === 'OPTIONS') {
-        reply.header('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS')
+        reply.header('access-control-allow-methods', 'GET,POST,PUT,DELETE,OPTIONS')
         reply.header('access-control-allow-headers', 'content-type,authorization')
         return reply.code(204).send()
       }
@@ -133,6 +133,16 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
     } catch (err) {
       return reply.code(400).send({ error: (err as Error).message })
     }
+  })
+
+  app.put<{ Body: ReorderProjectsBody }>('/api/projects/order', async (req, reply) => {
+    const ids = req.body?.ids
+    if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) {
+      return reply.code(400).send({ error: 'ids(프로젝트 id 배열)가 필요합니다' })
+    }
+    store.reorder(ids)
+    syncProjects()
+    return reply.code(204).send()
   })
 
   // 경로는 요청이 아니라 등록된 프로젝트에서만 가져오고, 앱은 허용 목록으로 제한한다
