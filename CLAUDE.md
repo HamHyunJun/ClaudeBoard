@@ -1,0 +1,8 @@
+# ClaudeBoard 작업 지침
+
+- 모든 답변, 코드 주석, 커밋 메시지는 한국어로 작성한다.
+- pnpm 워크스페이스 모노레포: `packages/shared`(프로토콜 타입), `apps/backend`(Fastify + ws + node-pty), `apps/frontend`(Nuxt 4 SPA).
+- WebSocket 메시지나 도메인 타입을 바꿀 때는 `packages/shared/src/index.ts`를 먼저 고치고 양쪽을 맞춘다. 백엔드·프론트에 같은 타입을 따로 정의하지 않는다.
+- 상태 판정 로직(`apps/backend/src/statusParser.ts`)은 순수 함수로 유지하고, 패턴을 바꾸면 `test/statusParser.test.ts`에 실제 화면 픽스처를 추가한다.
+- 프론트 스타일은 컴포넌트별 `<style scoped lang="scss">`. 색·모션 값은 `app/assets/styles/main.scss`의 CSS 변수를 쓰고 하드코딩하지 않는다. 믹스인(`pressable`, `focus-ring`)과 브레이크포인트(`$bp-*`)는 자동 주입된다.
+- 변경 후 확인: `pnpm typecheck && pnpm test && pnpm build`. 화면 확인은 `pnpm build && pnpm --filter @claudeboard/backend start:demo` 후 http://127.0.0.1:4317.
