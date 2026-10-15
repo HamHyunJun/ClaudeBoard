@@ -121,3 +121,13 @@ test('HUD 의 git 상태 줄은 마지막 출력이 아니라 저장소별 상�
     { branch: 'dev', staged: 1, modified: 3, untracked: 3, ahead: 2, behind: 0 }
   ])
 })
+
+test('단계 표식이 없어도 도구 사용 이력으로 단계를 추정한다', () => {
+  const read = analyzeWorkflow(['> 버그 고쳐줘', '⏺ Read(src/a.ts)', '⏺ Grep(foo)'], 'THINKING')
+  assert.equal(read.stage, 'plan')
+  const edit = analyzeWorkflow(['> 버그 고쳐줘', '⏺ Read(src/a.ts)', '⏺ Edit(src/a.ts)', '⏺ Read(src/b.ts)'], 'EXECUTING')
+  assert.equal(edit.stage, 'execute')
+  const verify = analyzeWorkflow(['> 버그 고쳐줘', '⏺ Edit(src/a.ts)', '⏺ Bash(pnpm test)'], 'EXECUTING')
+  assert.equal(verify.stage, 'verify')
+  assert.equal(analyzeWorkflow(['⏺ Bash(pnpm test)', '> 새 질문', '⏺ Read(a.ts)'], 'THINKING').stage, 'plan')
+})
