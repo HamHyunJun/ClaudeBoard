@@ -68,6 +68,8 @@ function isChrome(line: string): boolean {
   if (/^[╭╰─━│┃\s]+[╮╯─━│┃\s]*$/u.test(t)) return true
   if (/^[│┃]?\s*>\s*[│┃]?$/u.test(t)) return true
   if (/\? for shortcuts|shift\+tab|auto-accept|bypass permissions/i.test(t)) return true
+  // CLI 자체 경고 배너(예: "⚠ Transcript saving is off …")는 대시보드에서 의미 없다
+  if (/^⚠\s/.test(t)) return true
   // 하단 상태줄(HUD): `[omc#…] | Model: …`, `Model: … | ctx …` 처럼 | 로 나뉜 메타 정보
   if (parseGitHud(t)) return true
   if (/^\[[\w#.-]+\]\s*\|/.test(t) || (/\bModel:/i.test(t) && t.includes('|'))) return true
