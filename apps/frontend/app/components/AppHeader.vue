@@ -2,6 +2,8 @@
 const emit = defineEmits<{ palette: [] }>()
 const cmd = useCommander()
 const notify = useNotify()
+const { theme, toggle: toggleTheme } = useTheme()
+const themeLabel = computed(() => (theme.value === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'))
 const isMac = computed(() => import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform))
 
 const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중', closed: '연결 끊김' })[cmd.conn.value])
@@ -48,6 +50,15 @@ const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중',
         <span class="dot" aria-hidden="true" />
         {{ connLabel }}
         <span v-if="cmd.conn.value === 'closed'" class="sr-only">, 눌러서 다시 연결</span>
+      </button>
+      <button class="ghost theme-btn" type="button" :aria-label="themeLabel" :title="themeLabel" @click="toggleTheme">
+        <svg v-if="theme === 'dark'" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M3.4 12.6l1.3-1.3M11.3 4.7l1.3-1.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+        <svg v-else viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M13.5 9.6A5.6 5.6 0 0 1 6.4 2.5a5.6 5.6 0 1 0 7.1 7.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+        </svg>
       </button>
       <button class="palette-btn" type="button" aria-keyshortcuts="Meta+K Control+K" @click="emit('palette')">
         <span>명령</span>
@@ -186,8 +197,14 @@ const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중',
   }
 }
 
+.theme-btn {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
 @media (max-width: $bp-mid) {
-  .ghost {
+  .ghost:not(.theme-btn) {
     display: none;
   }
 }

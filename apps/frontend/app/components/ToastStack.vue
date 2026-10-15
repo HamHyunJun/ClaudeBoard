@@ -44,7 +44,7 @@ const cmd = useCommander()
   border-left: 3px solid var(--idle);
   border-radius: var(--r-md);
   background: var(--ink-2);
-  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.5);
+  box-shadow: 0 12px 32px -8px var(--shadow);
   pointer-events: auto;
   &.warning {
     border-left-color: var(--executing);

@@ -164,7 +164,7 @@ const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTo
   }
 }
 .cacheRead {
-  --sw: #4f6378;
+  --sw: var(--swatch-cache);
 }
 .input {
   --sw: var(--idle);

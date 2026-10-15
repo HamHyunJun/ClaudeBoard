@@ -11,7 +11,14 @@ export default defineNuxtConfig({
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: '로컬 Claude Code 세션을 한 화면에서 모니터링하고 제어하는 관제 대시보드' },
-        { name: 'color-scheme', content: 'dark' }
+        { name: 'color-scheme', content: 'dark light' }
+      ],
+      // 첫 페인트 전에 테마를 정해 밝은 테마에서 어두운 화면이 번쩍이는 것을 막는다
+      script: [
+        {
+          innerHTML:
+            "try{var t=localStorage.getItem('claudeboard-theme');document.documentElement.dataset.theme=t==='light'||t==='dark'?t:matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}catch(e){}"
+        }
       ],
       link: [
         { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },

@@ -47,6 +47,42 @@
   --dur-fast: 140ms;
   --dur: 220ms;
   --dur-spring: 520ms;
+
+  --scrim: rgb(6 10 16 / 0.62);
+  --shadow: rgb(0 0 0 / 0.55);
+  --swatch-cache: #4f6378;
+}
+
+// 라이트 테마: 같은 토큰을 밝은 값으로 다시 정의한다 (상태색은 흰 바탕 대비를 위해 한 단계 진하게)
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --ink-0: #f4f6f9;
+  --ink-1: #ffffff;
+  --ink-2: #eef1f5;
+  --ink-3: #e1e6ed;
+  --rule: #d8dee6;
+  --rule-strong: #bcc6d2;
+
+  --text: #18212b;
+  --text-2: #4a5a6c;
+  --text-3: #6b7b8e;
+
+  --idle: #3f7aa8;
+  --thinking: #6d57d6;
+  --executing: #c76a0a;
+  --approval: #d0305a;
+  --ok: #1f9568;
+  --focus: #1d6fd1;
+
+  --idle-wash: rgb(63 122 168 / 0.1);
+  --thinking-wash: rgb(109 87 214 / 0.1);
+  --executing-wash: rgb(199 106 10 / 0.11);
+  --approval-wash: rgb(208 48 90 / 0.1);
+
+  --scrim: rgb(24 33 43 / 0.35);
+  --shadow: rgb(24 33 43 / 0.18);
+  --swatch-cache: #9aaabb;
 }
 
 *,
@@ -93,7 +129,7 @@ button {
 }
 
 ::selection {
-  background: rgb(159 209 255 / 0.3);
+  background: color-mix(in srgb, var(--focus) 30%, transparent);
 }
 
 code,

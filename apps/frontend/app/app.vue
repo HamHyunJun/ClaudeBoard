@@ -227,7 +227,7 @@ useHead({
     width: min(788px, calc(100vw - 16px));
   }
   .term-open .drawer {
-    box-shadow: -24px 0 64px -16px rgb(0 0 0 / 0.6);
+    box-shadow: -24px 0 64px -16px var(--shadow);
   }
 }
 

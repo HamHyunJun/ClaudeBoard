@@ -64,7 +64,7 @@ function trap(e: KeyboardEvent) {
   display: grid;
   justify-items: center;
   padding: 16px;
-  background: rgb(6 10 16 / 0.62);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
   &.center {
     align-items: center;
@@ -82,7 +82,7 @@ function trap(e: KeyboardEvent) {
   border: 1px solid var(--rule-strong);
   border-radius: var(--r-lg);
   background: var(--ink-1);
-  box-shadow: 0 24px 64px -12px rgb(0 0 0 / 0.55);
+  box-shadow: 0 24px 64px -12px var(--shadow);
   transform-origin: 50% 0;
 }
 
