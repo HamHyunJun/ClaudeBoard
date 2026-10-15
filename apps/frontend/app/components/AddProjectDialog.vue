@@ -72,6 +72,7 @@ import type { DirListing } from '@claudeboard/shared'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
+
 const cmd = useCommander()
 const { toast } = useNotify()
 
@@ -108,19 +109,6 @@ function pick(): void {
   error.value = ''
 }
 
-watch(
-  () => props.open,
-  (o) => {
-    if (o) {
-      Object.assign(form, { name: '', cwd: '', command: '', autoStart: true })
-      error.value = ''
-      browsing.value = false
-      listing.value = null
-      browseError.value = ''
-    }
-  }
-)
-
 async function submit(): Promise<void> {
   if (!form.cwd.trim()) {
     error.value = '프로젝트 경로를 입력하세요.'
@@ -145,6 +133,19 @@ async function submit(): Promise<void> {
     saving.value = false
   }
 }
+
+watch(
+  () => props.open,
+  (o) => {
+    if (o) {
+      Object.assign(form, { name: '', cwd: '', command: '', autoStart: true })
+      error.value = ''
+      browsing.value = false
+      listing.value = null
+      browseError.value = ''
+    }
+  }
+)
 </script>
 
 <style scoped lang="scss">

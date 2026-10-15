@@ -53,10 +53,9 @@
  */
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; addProject: []; focusPrompt: [id: string] }>()
+
 const cmd = useCommander()
 const notify = useNotify()
-const query = ref('')
-const active = ref(0)
 
 interface Item {
   id: string
@@ -65,6 +64,9 @@ interface Item {
   hint?: string
   run: () => void
 }
+
+const query = ref('')
+const active = ref(0)
 
 const items = computed<Item[]>(() => {
   const list: Item[] = []
@@ -128,17 +130,6 @@ const groups = computed(() => {
   return [...map.entries()]
 })
 
-watch(query, () => (active.value = 0))
-watch(
-  () => props.open,
-  (o) => {
-    if (o) {
-      query.value = ''
-      active.value = 0
-    }
-  }
-)
-
 function run(item?: Item): void {
   if (!item) return
   emit('close')
@@ -159,6 +150,17 @@ function onKey(e: KeyboardEvent): void {
     run(items.value[active.value])
   }
 }
+
+watch(query, () => (active.value = 0))
+watch(
+  () => props.open,
+  (o) => {
+    if (o) {
+      query.value = ''
+      active.value = 0
+    }
+  }
+)
 
 watch(active, (i) => nextTick(() => document.getElementById(`cp-opt-${i}`)?.scrollIntoView({ block: 'nearest' })))
 </script>

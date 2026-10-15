@@ -159,8 +159,28 @@ const emit = defineEmits<{ select: []; open: [] }>()
 
 const cmd = useCommander()
 const now = useNow()
+
 const draft = ref('')
 const promptInput = ref<HTMLInputElement>()
+
+// 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
+const confirmRemove = ref(false)
+let confirmTimer: ReturnType<typeof setTimeout> | undefined
+
+// 더보기 메뉴: 팝오버(최상위 레이어)라 펼침 영역의 overflow 에 잘리지 않는다. 위치는 버튼 기준으로 직접 잡는다
+const moreBtn = ref<HTMLButtonElement>()
+const menuEl = ref<HTMLElement>()
+const menuOpen = ref(false)
+
+const GIT_CHANGES = [
+  { key: 'staged', sym: '+', label: '스테이징됨', cls: 'ok' },
+  { key: 'modified', sym: '±', label: '수정됨', cls: 'warn' },
+  { key: 'untracked', sym: '●', label: '추적 안 됨', cls: 'info' },
+  { key: 'ahead', sym: '↑', label: '푸시 안 한 커밋', cls: 'info' },
+  { key: 'behind', sym: '↓', label: '받아야 할 커밋', cls: 'warn' }
+] as const
+
+onBeforeUnmount(() => clearTimeout(confirmTimer))
 
 const running = computed(() => props.session?.process === 'running' || props.session?.process === 'starting')
 const status = computed(() => props.session?.status ?? 'IDLE')
@@ -182,10 +202,11 @@ const hot = computed(() => (props.usage?.last5m ?? 0) >= props.hogThreshold)
 const quickActions = computed(() => props.project.quickActions?.length ? props.project.quickActions : DEFAULT_QUICK_ACTIONS)
 const nameId = computed(() => `strip-${props.project.id}`)
 const detailId = computed(() => `strip-detail-${props.project.id}`)
+const menuId = computed(() => `strip-menu-${props.project.id}`)
 
-// 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
-const confirmRemove = ref(false)
-let confirmTimer: ReturnType<typeof setTimeout> | undefined
+// 터미널 출력 앞의 장식 기호(⏺ ● ⎿ > 등)는 대시보드에서 의미가 없으므로 걷어낸다
+const activity = computed(() => props.session?.lastLine?.replace(/^[\s⏺●○⎿✻✢✶·>│┃*-]+/u, '').trim() || undefined)
+
 async function removeSession(): Promise<void> {
   if (!confirmRemove.value) {
     confirmRemove.value = true
@@ -201,7 +222,6 @@ async function removeSession(): Promise<void> {
     useNotify().toast({ level: 'warning', title: (err as Error).message })
   }
 }
-onBeforeUnmount(() => clearTimeout(confirmTimer))
 
 // 박스의 빈 곳을 눌러도 이름을 누른 것과 같게 동작한다 (버튼·입력 등 자체 동작이 있는 요소는 제외)
 function onBoxClick(e: MouseEvent, action: 'select' | 'open'): void {
@@ -209,12 +229,6 @@ function onBoxClick(e: MouseEvent, action: 'select' | 'open'): void {
   if (action === 'select') emit('select')
   else emit('open')
 }
-
-// 더보기 메뉴: 팝오버(최상위 레이어)라 펼침 영역의 overflow 에 잘리지 않는다. 위치는 버튼 기준으로 직접 잡는다
-const moreBtn = ref<HTMLButtonElement>()
-const menuEl = ref<HTMLElement>()
-const menuOpen = ref(false)
-const menuId = computed(() => `strip-menu-${props.project.id}`)
 function toggleMenu(): void {
   const menu = menuEl.value
   const btn = moreBtn.value
@@ -257,17 +271,6 @@ function send(text: string): void {
   cmd.prompt(props.project.id, t)
   draft.value = ''
 }
-
-// 터미널 출력 앞의 장식 기호(⏺ ● ⎿ > 등)는 대시보드에서 의미가 없으므로 걷어낸다
-const activity = computed(() => props.session?.lastLine?.replace(/^[\s⏺●○⎿✻✢✶·>│┃*-]+/u, '').trim() || undefined)
-
-const GIT_CHANGES = [
-  { key: 'staged', sym: '+', label: '스테이징됨', cls: 'ok' },
-  { key: 'modified', sym: '±', label: '수정됨', cls: 'warn' },
-  { key: 'untracked', sym: '●', label: '추적 안 됨', cls: 'info' },
-  { key: 'ahead', sym: '↑', label: '푸시 안 한 커밋', cls: 'info' },
-  { key: 'behind', sym: '↓', label: '받아야 할 커밋', cls: 'warn' }
-] as const
 const gitCounts = (g: GitRepoState): Array<(typeof GIT_CHANGES)[number] & { n: number }> =>
   GIT_CHANGES.filter((c) => g[c.key] > 0).map((c) => ({ ...c, n: g[c.key] }))
 

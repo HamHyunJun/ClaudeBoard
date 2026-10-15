@@ -70,6 +70,7 @@
  */
 const cmd = useCommander()
 const now = useNow()
+
 const tab = ref<'terminal' | 'events'>('terminal')
 const tabs = [
   { id: 'terminal', label: '터미널' },
@@ -78,6 +79,8 @@ const tabs = [
 const tabEls = ref<Record<string, HTMLButtonElement>>({})
 const indicator = ref({ x: 0, w: 0 })
 const xterm = ref<{ focus: () => void }>()
+
+onMounted(() => nextTick(moveIndicator))
 
 const item = computed(() => cmd.terminalTarget.value)
 const session = computed(() => item.value?.session)
@@ -88,8 +91,6 @@ function moveIndicator(): void {
   const el = tabEls.value[tab.value]
   if (el) indicator.value = { x: el.offsetLeft, w: el.offsetWidth }
 }
-watch(tab, () => nextTick(moveIndicator))
-onMounted(() => nextTick(moveIndicator))
 
 function onTabKey(e: KeyboardEvent): void {
   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
@@ -99,6 +100,8 @@ function onTabKey(e: KeyboardEvent): void {
 }
 
 defineExpose({ focus: () => xterm.value?.focus() })
+
+watch(tab, () => nextTick(moveIndicator))
 </script>
 
 <style scoped lang="scss">

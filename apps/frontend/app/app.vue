@@ -52,6 +52,7 @@
  */
 const cmd = useCommander()
 const notify = useNotify()
+
 const paletteOpen = ref(false)
 const addOpen = ref(false)
 const rack = ref<{ focusPrompt: (id: string) => void }>()
@@ -59,6 +60,7 @@ const rack = ref<{ focusPrompt: (id: string) => void }>()
 // 서버 알림 → 토스트 + 데스크톱 알림 (승인 요청은 상단 배너가 담당하므로 토스트 생략)
 // 핸들러는 모듈 전역에 남으므로, 해제하지 않으면 화면이 다시 마운트될 때마다(HMR 포함) 알림이 겹쳐 뜬다
 let offAlert: (() => void) | undefined
+
 onMounted(() => {
   offAlert = cmd.onAlert((a) => {
     if (a.kind !== 'approval') notify.toast({ level: a.level, title: a.title, body: a.body, projectId: a.projectId })
@@ -66,6 +68,11 @@ onMounted(() => {
   })
 })
 onBeforeUnmount(() => offAlert?.())
+onMounted(() => window.addEventListener('keydown', onGlobalKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
+
+const hasTerminal = computed(() => !!cmd.terminalTarget.value)
+const termOpen = computed(() => cmd.terminalOpen.value && hasTerminal.value)
 
 function onGlobalKey(e: KeyboardEvent): void {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -79,10 +86,6 @@ function onGlobalKey(e: KeyboardEvent): void {
     cmd.terminalOpen.value = false
   }
 }
-const hasTerminal = computed(() => !!cmd.terminalTarget.value)
-const termOpen = computed(() => cmd.terminalOpen.value && hasTerminal.value)
-onMounted(() => window.addEventListener('keydown', onGlobalKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
 
 useHead({
   title: computed(() => {

@@ -17,23 +17,9 @@
  */
 const props = defineProps<{ open: boolean; labelledby: string; placement?: 'center' | 'top' }>()
 const emit = defineEmits<{ close: [] }>()
+
 const panel = ref<HTMLElement>()
 let restoreFocus: HTMLElement | null = null
-
-watch(
-  () => props.open,
-  (open) => {
-    if (open) {
-      restoreFocus = document.activeElement as HTMLElement | null
-      nextTick(() => {
-        const first = panel.value?.querySelector<HTMLElement>('[autofocus], input, button, [tabindex="0"]')
-        first?.focus()
-      })
-    } else {
-      restoreFocus?.focus?.()
-    }
-  }
-)
 
 function trap(e: KeyboardEvent): void {
   if (e.key === 'Escape') {
@@ -54,6 +40,21 @@ function trap(e: KeyboardEvent): void {
     first.focus()
   }
 }
+
+watch(
+  () => props.open,
+  (open) => {
+    if (open) {
+      restoreFocus = document.activeElement as HTMLElement | null
+      nextTick(() => {
+        const first = panel.value?.querySelector<HTMLElement>('[autofocus], input, button, [tabindex="0"]')
+        first?.focus()
+      })
+    } else {
+      restoreFocus?.focus?.()
+    }
+  }
+)
 </script>
 
 <style scoped lang="scss">

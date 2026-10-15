@@ -18,8 +18,10 @@ import '@xterm/xterm/css/xterm.css'
  * 키 입력은 원시 그대로 PTY stdin 으로 보내므로 Claude Code와 직접 상호작용할 수 있다.
  */
 const props = defineProps<{ projectId: string; label: string }>()
+
 const cmd = useCommander()
 const { theme } = useTheme()
+
 const host = ref<HTMLDivElement>()
 let term: Terminal | undefined
 let fit: FitAddon | undefined
@@ -40,54 +42,7 @@ const MAX_WAIT_MS = 400
 let waiting = false
 let quietTimer: ReturnType<typeof setTimeout> | undefined
 let deadlineTimer: ReturnType<typeof setTimeout> | undefined
-
-function cancelReveal(): void {
-  waiting = false
-  clearTimeout(quietTimer)
-  clearTimeout(deadlineTimer)
-}
-function reveal(): void {
-  cancelReveal()
-  ready.value = true
-}
-// 출력이 올 때마다 호출: 마지막 출력 뒤 QUIET_MS 가 지나야 보여준다
-function holdReveal(): void {
-  if (!waiting) return
-  clearTimeout(quietTimer)
-  quietTimer = setTimeout(reveal, QUIET_MS)
-}
 const SKELETON = ['38%', '72%', '56%', '24%', '64%', '48%']
-
-function css(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-}
-
-// 밝은 테마에서는 흰색·노랑 계열이 바탕에 묻히므로 ANSI 색을 어두운 쪽으로 옮긴다
-function termTheme(): ITheme {
-  const light = document.documentElement.dataset.theme === 'light'
-  return {
-    background: css('--ink-0'),
-    foreground: css('--text'),
-    cursor: css('--focus'),
-    selectionBackground: light ? 'rgba(29, 111, 209, 0.25)' : 'rgba(159, 209, 255, 0.3)',
-    black: light ? '#18212b' : '#1b2633',
-    brightBlack: light ? '#6b7b8e' : '#5b6b7e',
-    red: light ? '#d0305a' : '#f2577a',
-    brightRed: light ? '#e5486f' : '#ff8aa3',
-    green: light ? '#1f9568' : '#57c79a',
-    brightGreen: light ? '#2bae7e' : '#7fe0b7',
-    yellow: light ? '#a87908' : '#f0c46b',
-    brightYellow: light ? '#c08e1a' : '#ffd98f',
-    blue: light ? '#3f7aa8' : '#7fa3c2',
-    brightBlue: light ? '#5593c4' : '#a6c6e2',
-    magenta: light ? '#6d57d6' : '#a99bf0',
-    brightMagenta: light ? '#8872e6' : '#c7bdff',
-    cyan: light ? '#1b8a9a' : '#6fc3d1',
-    brightCyan: light ? '#2aa3b5' : '#9be0ea',
-    white: light ? '#4a5a6c' : '#c9d3dd',
-    brightWhite: light ? '#18212b' : '#f3f6f9'
-  }
-}
 
 onMounted(() => {
   term = new Terminal({
@@ -169,8 +124,6 @@ onMounted(() => {
   term.focus()
 })
 
-watch(theme, () => nextTick(() => term && (term.options.theme = termTheme())))
-
 onBeforeUnmount(() => {
   unsubscribe?.()
   ro?.disconnect()
@@ -183,7 +136,56 @@ onBeforeUnmount(() => {
   fit = undefined
 })
 
+function cancelReveal(): void {
+  waiting = false
+  clearTimeout(quietTimer)
+  clearTimeout(deadlineTimer)
+}
+function reveal(): void {
+  cancelReveal()
+  ready.value = true
+}
+// 출력이 올 때마다 호출: 마지막 출력 뒤 QUIET_MS 가 지나야 보여준다
+function holdReveal(): void {
+  if (!waiting) return
+  clearTimeout(quietTimer)
+  quietTimer = setTimeout(reveal, QUIET_MS)
+}
+
+function css(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+// 밝은 테마에서는 흰색·노랑 계열이 바탕에 묻히므로 ANSI 색을 어두운 쪽으로 옮긴다
+function termTheme(): ITheme {
+  const light = document.documentElement.dataset.theme === 'light'
+  return {
+    background: css('--ink-0'),
+    foreground: css('--text'),
+    cursor: css('--focus'),
+    selectionBackground: light ? 'rgba(29, 111, 209, 0.25)' : 'rgba(159, 209, 255, 0.3)',
+    black: light ? '#18212b' : '#1b2633',
+    brightBlack: light ? '#6b7b8e' : '#5b6b7e',
+    red: light ? '#d0305a' : '#f2577a',
+    brightRed: light ? '#e5486f' : '#ff8aa3',
+    green: light ? '#1f9568' : '#57c79a',
+    brightGreen: light ? '#2bae7e' : '#7fe0b7',
+    yellow: light ? '#a87908' : '#f0c46b',
+    brightYellow: light ? '#c08e1a' : '#ffd98f',
+    blue: light ? '#3f7aa8' : '#7fa3c2',
+    brightBlue: light ? '#5593c4' : '#a6c6e2',
+    magenta: light ? '#6d57d6' : '#a99bf0',
+    brightMagenta: light ? '#8872e6' : '#c7bdff',
+    cyan: light ? '#1b8a9a' : '#6fc3d1',
+    brightCyan: light ? '#2aa3b5' : '#9be0ea',
+    white: light ? '#4a5a6c' : '#c9d3dd',
+    brightWhite: light ? '#18212b' : '#f3f6f9'
+  }
+}
+
 defineExpose({ focus: () => term?.focus() })
+
+watch(theme, () => nextTick(() => term && (term.options.theme = termTheme())))
 </script>
 
 <style scoped lang="scss">

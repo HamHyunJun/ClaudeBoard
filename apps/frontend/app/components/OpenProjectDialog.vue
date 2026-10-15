@@ -28,26 +28,16 @@
 /** 프로젝트 폴더를 어떤 응용 프로그램으로 열지 확인받고 실행한다 */
 import { OPEN_APPS, type OpenAppId } from '@claudeboard/shared'
 
-const KEY = 'claudeboard:open-app'
 const cmd = useCommander()
 const { toast } = useNotify()
 
-const project = computed(() => cmd.projects.value.find((p) => p.id === cmd.openTargetId.value))
-const open = computed(() => !!project.value)
+const KEY = 'claudeboard:open-app'
 const app = ref<OpenAppId>('vscode')
 const opening = ref(false)
 const error = ref('')
 
-watch(open, (o) => {
-  if (!o) return
-  error.value = ''
-  try {
-    const saved = localStorage.getItem(KEY)
-    if (OPEN_APPS.some((a) => a.id === saved)) app.value = saved as OpenAppId
-  } catch {
-    // 저장소를 못 읽으면 기본값 사용
-  }
-})
+const project = computed(() => cmd.projects.value.find((p) => p.id === cmd.openTargetId.value))
+const open = computed(() => !!project.value)
 
 function close(): void {
   cmd.openTargetId.value = null
@@ -73,6 +63,17 @@ async function submit(): Promise<void> {
     opening.value = false
   }
 }
+
+watch(open, (o) => {
+  if (!o) return
+  error.value = ''
+  try {
+    const saved = localStorage.getItem(KEY)
+    if (OPEN_APPS.some((a) => a.id === saved)) app.value = saved as OpenAppId
+  } catch {
+    // 저장소를 못 읽으면 기본값 사용
+  }
+})
 </script>
 
 <style scoped lang="scss">

@@ -38,13 +38,11 @@ import SessionStrip from './SessionStrip.vue'
 
 /** 세션 스트립 묶음. ↑/↓ 로 스트립 사이를 이동하고 t 로 터미널, / 로 프롬프트에 포커스한다. */
 const emit = defineEmits<{ add: [] }>()
+
 const cmd = useCommander()
+
 // v-for 의 ref 배열은 순서가 보장되지 않으므로 프로젝트 id 로 보관
 const strips = new Map<string, InstanceType<typeof SessionStrip>>()
-function setStrip(id: string, el: unknown): void {
-  if (el) strips.set(id, el as InstanceType<typeof SessionStrip>)
-  else strips.delete(id)
-}
 const listEl = ref<HTMLOListElement>()
 
 const usageById = computed(() => {
@@ -53,6 +51,11 @@ const usageById = computed(() => {
   return map
 })
 const hogThreshold = computed(() => (cmd.demo.value ? 300_000 : 400_000))
+
+function setStrip(id: string, el: unknown): void {
+  if (el) strips.set(id, el as InstanceType<typeof SessionStrip>)
+  else strips.delete(id)
+}
 
 function select(id: string): void {
   cmd.selectedId.value = cmd.selectedId.value === id ? null : id

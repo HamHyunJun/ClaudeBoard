@@ -72,6 +72,7 @@
 /** 토큰·비용·할당량·리셋 카운트다운·프로젝트별 순위를 모은 왼쪽 계기판 */
 const cmd = useCommander()
 const now = useNow()
+
 const u = computed(() => cmd.usage.value)
 
 const breakdown = computed(() => {
@@ -99,13 +100,13 @@ const resetIn = computed(() => {
 // 리셋 시각이 지났으면 새 창이 열리기 전이므로 0%
 const fiveHourPercent = computed(() => (resetIn.value === null ? 0 : (fiveHour.value?.percent ?? 0)))
 const weekResetsAt = computed(() => sevenDay.value?.resetsAt)
+const topProjects = computed(() => (u.value?.projects ?? []).slice(0, 6))
+const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTotal)))
 
 const nameOf = (id: string | null, cwd: string): string =>
   (id && cmd.projects.value.find((p) => p.id === id)?.name) || shortPath(cwd)
-const topProjects = computed(() => (u.value?.projects ?? []).slice(0, 6))
 const projectTotal = (p: { today: { input: number; output: number; cacheWrite: number; cacheRead: number } }): number =>
   p.today.input + p.today.output + p.today.cacheWrite + p.today.cacheRead
-const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTotal)))
 </script>
 
 <style scoped lang="scss">
