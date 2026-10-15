@@ -44,3 +44,16 @@ test('자격 증명 없음·토큰 만료는 unavailable, 429 는 백오프', as
   await c.poll()
   assert.equal(calls, 1)
 })
+
+test('429 의 Retry-After 가 기본 백오프보다 길면 그만큼 쉰다', async () => {
+  let t = 1_000_000
+  let calls = 0
+  const c = make(() => (calls++, new Response('x', { status: 429, headers: { 'retry-after': '900' } })), cred, () => t)
+  await c.poll()
+  t += 10 * 60_000 // 기본 5분은 지났지만 900초는 아직
+  await c.poll()
+  assert.equal(calls, 1)
+  t += 6 * 60_000
+  await c.poll()
+  assert.equal(calls, 2)
+})

@@ -236,7 +236,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   syncProjects()
   usage.start()
 
-  const officialTimer = cfg.demo ? undefined : setInterval(pollOfficial, 60_000)
+  const officialTimer = cfg.demo ? undefined : setInterval(pollOfficial, 3 * 60_000)
   officialTimer?.unref()
   if (!cfg.demo) void pollOfficial()
 
