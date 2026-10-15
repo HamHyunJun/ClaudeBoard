@@ -131,3 +131,12 @@ test('단계 표식이 없어도 도구 사용 이력으로 단계를 추정한�
   assert.equal(verify.stage, 'verify')
   assert.equal(analyzeWorkflow(['⏺ Bash(pnpm test)', '> 새 질문', '⏺ Read(a.ts)'], 'THINKING').stage, 'plan')
 })
+
+test('CLI 경고 배너(⚠ …)는 마지막 출력으로 잡지 않는다', () => {
+  const r = analyzeScreen([
+    '⏺ 완료했습니다.',
+    '⚠ Transcript saving is off — inherited CLAUDE_CODE_CHILD_SESSION marker · restart with CL…',
+    '  ? for shortcuts'
+  ])
+  assert.equal(r.lastLine, '⏺ 완료했습니다.')
+})
