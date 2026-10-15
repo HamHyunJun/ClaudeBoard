@@ -9,6 +9,7 @@ import { WS_PATH } from '@claudeboard/shared'
 import type { ServerConfig } from './config.ts'
 import { ProjectStore } from './projectStore.ts'
 import { SessionManager } from './sessionManager.ts'
+import { OfficialUsageClient } from './officialUsage.ts'
 import { UsageTracker } from './usageTracker.ts'
 
 export const SERVER_VERSION = '0.1.0'
@@ -225,6 +226,13 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   syncProjects()
   usage.start()
 
+  // 데모에서는 실제 계정을 건드리지 않는다
+  const official = new OfficialUsageClient()
+  const pollOfficial = async () => usage.setOfficial(await official.poll())
+  const officialTimer = cfg.demo ? undefined : setInterval(pollOfficial, 60_000)
+  officialTimer?.unref()
+  if (!cfg.demo) void pollOfficial()
+
   return {
     app,
     sessions,
@@ -232,6 +240,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
     store,
     async close() {
       usage.stop()
+      clearInterval(officialTimer)
       sessions.disposeAll()
       for (const c of clients) c.ws.terminate()
       wss.close()

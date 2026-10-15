@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
 import { open, readdir, stat } from 'node:fs/promises'
 import { join, sep } from 'node:path'
-import type { Alert, ProjectConfig, ProjectUsage, TokenBreakdown, UsageSummary } from '@claudeboard/shared'
+import type { Alert, OfficialUsage, ProjectConfig, ProjectUsage, TokenBreakdown, UsageSummary } from '@claudeboard/shared'
 import type { ServerConfig } from './config.ts'
 import { costOf } from './pricing.ts'
 
@@ -103,6 +103,7 @@ export class UsageTracker extends EventEmitter {
   private projects: ProjectConfig[] = []
   private hogCooldown = new Map<string, number>()
   private lastSummary?: UsageSummary
+  private official?: OfficialUsage
 
   constructor(private cfg: ServerConfig) {
     super()
@@ -132,6 +133,13 @@ export class UsageTracker extends EventEmitter {
 
   stop() {
     clearInterval(this.timer)
+  }
+
+  /** 구독 계정 실측값 갱신 → 즉시 대시보드에 반영 */
+  setOfficial(official: OfficialUsage) {
+    this.official = official
+    this.lastSummary = this.summary()
+    this.emit('usage', this.lastSummary)
   }
 
   /** 테스트·외부 주입용 */
@@ -246,6 +254,7 @@ export class UsageTracker extends EventEmitter {
       week: { used: week, limit: limits.weeklyTokens },
       month: { used: month, limit: limits.monthlyTokens },
       rateWindow: { ...win, limit: limits.windowTokens },
+      official: this.official,
       projects: [...per.values()].sort((a, b) => sum(b.today) - sum(a.today)),
       sourceDir: this.cfg.claudeProjectsDir,
       sourceAvailable: existsSync(this.cfg.claudeProjectsDir)

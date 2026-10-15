@@ -38,6 +38,25 @@ const quickActions = computed(() => props.project.quickActions?.length ? props.p
 const nameId = computed(() => `strip-${props.project.id}`)
 const detailId = computed(() => `strip-detail-${props.project.id}`)
 
+// 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
+const confirmRemove = ref(false)
+let confirmTimer: ReturnType<typeof setTimeout> | undefined
+async function removeSession() {
+  if (!confirmRemove.value) {
+    confirmRemove.value = true
+    confirmTimer = setTimeout(() => (confirmRemove.value = false), 3000)
+    return
+  }
+  clearTimeout(confirmTimer)
+  confirmRemove.value = false
+  try {
+    await cmd.removeProject(props.project.id)
+  } catch (err) {
+    useNotify().toast({ level: 'warning', title: (err as Error).message, projectId: props.project.id })
+  }
+}
+onBeforeUnmount(() => clearTimeout(confirmTimer))
+
 function send(text: string) {
   const t = text.trim()
   if (!t) return
@@ -131,6 +150,16 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
           <span class="spacer" />
           <button v-if="running" class="chip ghost" type="button" @click="cmd.restart(project.id)">재시작</button>
           <button v-if="running" class="chip ghost danger" type="button" @click="cmd.stop(project.id)">중지</button>
+          <button
+            class="chip ghost danger"
+            :class="{ armed: confirmRemove }"
+            type="button"
+            :aria-label="`${project.name} 세션 삭제`"
+            @click="removeSession"
+            @blur="confirmRemove = false"
+          >
+            {{ confirmRemove ? '정말 삭제?' : '삭제' }}
+          </button>
         </div>
       </div>
     </div>
@@ -143,7 +172,10 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   --wash: transparent;
   position: relative;
   display: grid;
-  grid-template-columns: 4px 1fr;
+  grid-template-columns: 4px minmax(0, 1fr);
+  // 터미널 패널 개폐로 폭이 바뀌므로 뷰포트가 아니라 스트립 폭 기준으로 배치를 바꾼다
+  container-type: inline-size;
+  min-width: 0;
   background: var(--ink-1);
   border: 1px solid var(--rule);
   border-radius: var(--r-md);
@@ -189,7 +221,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 
 .main {
   display: grid;
-  grid-template-columns: minmax(150px, 1.15fr) minmax(130px, 0.8fr) minmax(200px, 1.6fr) 120px auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.8fr) minmax(0, 1.6fr) 110px auto;
   grid-template-areas:
     'ident state wf tokens actions'
     'activity activity activity activity activity';
@@ -313,6 +345,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 // 선택 시 펼쳐지는 영역: grid-template-rows 0fr → 1fr 로 높이를 자연스럽게 애니메이션
 .detail {
   grid-column: 2;
+  min-width: 0;
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows var(--dur-spring) var(--spring);
@@ -327,6 +360,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 
 .prompt {
   display: flex;
+  min-width: 0;
   gap: 8px;
   padding: 4px 14px 8px;
 }
@@ -358,6 +392,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   padding: 0 14px 12px;
 }
 .spacer {
@@ -409,8 +444,12 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
     font-family: var(--font-ui);
     border-color: transparent;
   }
-  &.danger:hover:not(:disabled) {
+  &.danger:hover:not(:disabled),
+  &.danger.armed {
     color: var(--approval);
+  }
+  &.danger.armed {
+    border-color: var(--approval);
   }
   &:disabled {
     opacity: 0.4;
@@ -418,9 +457,10 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   }
 }
 
-@media (max-width: $bp-wide) {
+// 스트립 폭 기준 반응형 (터미널을 열면 랙이 ~500px 까지 좁아진다)
+@container (max-width: 760px) {
   .main {
-    grid-template-columns: minmax(140px, 1fr) minmax(120px, 0.8fr) 110px auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) 100px auto;
     grid-template-areas:
       'ident state tokens actions'
       'wf wf wf wf'
@@ -428,9 +468,9 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   }
 }
 
-@media (max-width: $bp-narrow) {
+@container (max-width: 520px) {
   .main {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'ident actions'
       'state tokens'
@@ -440,6 +480,16 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   }
   .tokens :deep(.spark) {
     display: none;
+  }
+  // 좁으면 퀵 액션 칩은 한 줄 가로 스크롤 대신 줄바꿈, 지시 입력은 버튼 아래로
+  .prompt {
+    flex-wrap: wrap;
+  }
+  .prompt-input {
+    flex-basis: 100%;
+  }
+  .prompt .btn {
+    flex: 1;
   }
 }
 </style>
