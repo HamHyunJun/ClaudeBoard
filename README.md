@@ -22,7 +22,7 @@ ClaudeBoard는 이 세 가지를 한 화면에서 해결하는 "관제탑"입니
 | 지시 | 스트립의 입력창이나 퀵 액션(`/ia scan`, `verify`, `clean dead code`, `/compact`)으로 프롬프트를 보냅니다. ⌘K에서 `@프로젝트 지시문`으로 보낼 수도 있습니다. |
 | 터미널 | xterm.js로 실시간 출력을 보고 키보드로 직접 조작합니다. 다시 접속하면 최근 512KB가 재생됩니다. |
 | 상태 추적 | `IDLE`(대기) / `THINKING`(추론) / `EXECUTING`(파일 수정·Bash, 주황 바) / `REQUIRES_APPROVAL`(승인 대기) 4단계를 판정해 색과 펄스로 표시합니다. |
-| 진행률 | `plan → execute → review → verify` 단계 표식과 Todo 체크리스트로 0~100%를 계산합니다. |
+| 진행률 | `plan → execute → review → verify` 단계 표식과 Todo 체크리스트로 0~100%를 계산합니다. 단계·Todo 신호가 없는 작업(일반 질문 등)은 퍼센트를 지어내지 않고 경과 시간과 흐르는 바로 표시합니다. |
 | 토큰 센터 | 오늘 토큰과 API 단가 환산 비용, 5시간 사용 창 리셋 카운트다운, 주간·월간 잔여량, 프로젝트별 순위와 30분 스파크라인을 보여주고 토큰 급증(Token Hog)을 경고합니다. |
 | 승인 | 승인 요청이 감지되면 상단 배너에 [승인]/[거절]이 뜹니다. 클릭 한 번으로 해당 PTY에 응답 키가 전달됩니다. |
 | 알림 | 승인 요청, 작업 완료, 토큰 급증을 화면 토스트와 브라우저 데스크톱 알림(창이 가려져 있을 때)으로 알립니다. |
@@ -47,7 +47,7 @@ pnpm dev
 pnpm build && pnpm start
 ```
 
-화면에서 **프로젝트 추가**를 눌러 디렉터리 경로를 등록하면 그 디렉터리에서 `claude`가 실행됩니다. 목록은 `~/.claudeboard/projects.json`에 저장되며, 항목에 `"autoStart": true`가 있으면 서버가 시작될 때 함께 실행됩니다.
+화면에서 **프로젝트 추가**를 눌러 디렉터리 경로를 직접 입력하거나 **찾아보기**로 폴더를 열어 가며 고르면 그 디렉터리에서 `claude`가 실행됩니다. 목록은 `~/.claudeboard/projects.json`에 저장되며, 항목에 `"autoStart": true`가 있으면 서버가 시작될 때 함께 실행됩니다.
 
 ### 키보드 단축키
 
@@ -75,6 +75,7 @@ claudeboard/
 │   │   ├── officialUsage.ts  Claude 계정의 5시간·주간 사용률과 리셋 시각 조회 (로그 합산보다 우선하는 출처)
 │   │   ├── pricing.ts        모델별 단가표와 비용 계산
 │   │   ├── projectStore.ts   ~/.claudeboard/projects.json 저장소
+│   │   ├── dirBrowser.ts     프로젝트 추가용 폴더 탐색 (하위 디렉터리 이름만 반환)
 │   │   └── config.ts         환경 변수
 │   ├── mock/mock-claude.mjs  데모·테스트용 Claude Code 흉내 CLI
 │   └── test/                 단위 테스트 + 데모 세션 E2E
@@ -124,7 +125,7 @@ Claude Code는 같은 줄을 커서 이동으로 계속 다시 그리는 TUI라�
 
 ### 워크플로우 진행률
 
-출력에 나타난 단계 표식(`[Plan]`, `## Execute`, `Phase: review`, `단계: 검증` 등, 한글 별칭 포함) 중 가장 마지막 것을 현재 단계로 봅니다. 각 단계의 시작값(계획 10%, 실행 35%, 검토 65%, 검증 85%)과 다음 단계 시작값 사이는 Claude Code Todo 목록의 완료 비율(☒/☐)로 채웁니다. 검증 단계에서 IDLE이 되면 100%입니다. `Progress: 72%`처럼 명시한 값이 있으면 그 값을 우선합니다.
+출력에 나타난 단계 표식(`[Plan]`, `## Execute`, `Phase: review`, `단계: 검증` 등, 한글 별칭 포함) 중 가장 마지막 것을 현재 단계로 봅니다. 각 단계의 시작값(계획 10%, 실행 35%, 검토 65%, 검증 85%)과 다음 단계 시작값 사이는 Claude Code Todo 목록의 완료 비율(☒/☐)로 채웁니다. 검증 단계에서 IDLE이 되면 100%입니다. `Progress: 72%`처럼 명시한 값이 있으면 그 값을 우선합니다. 단계 표식도 Todo도 없으면 가짜 퍼센트 대신 작업 시작 시각(`busySince`)부터의 경과 시간을 표시하고, 4구간 전체에 줄무늬가 흐르는 불확정 바로 보여줍니다.
 
 ### 토큰과 한도
 
@@ -145,7 +146,7 @@ Claude Code는 대화마다 `~/.claude/projects/<인코딩된 경로>/<세션>.j
 | 브라우저 → 서버 | `subscribe`, `unsubscribe`, `input`(원시 키), `prompt`(텍스트+엔터), `resize`, `approve`, `start`, `stop`, `restart`, `ping` |
 | 서버 → 브라우저 | `hello`(접속 시 전체 상태), `projects`, `session`, `session-removed`, `replay`, `output`(구독자에게만), `usage`, `alert`, `error`, `pong` |
 
-REST: `GET /api/health`, `GET/POST /api/projects`, `DELETE /api/projects/:id`, `GET /api/sessions`, `GET /api/usage`, `GET /api/alerts`
+REST: `GET /api/health`, `GET/POST /api/projects`, `DELETE /api/projects/:id`, `GET /api/fs?path=`(하위 폴더 목록, 숨김 폴더 제외), `GET /api/sessions`, `GET /api/usage`, `GET /api/alerts`
 
 ## 환경 변수 (백엔드)
 

@@ -216,5 +216,15 @@ export interface CreateProjectBody {
   autoStart?: boolean
 }
 
+/** GET /api/fs — 프로젝트 경로 선택용 디렉터리 목록 */
+export interface DirListing {
+  /** 정규화된 절대 경로 */
+  path: string
+  /** 상위 디렉터리. 루트면 null */
+  parent: string | null
+  /** 하위 디렉터리 이름 (숨김 폴더 제외, 이름순) */
+  dirs: string[]
+}
+
 export const WS_PATH = '/ws'
 export const DEFAULT_BACKEND_PORT = 4317

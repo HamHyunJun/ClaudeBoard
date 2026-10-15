@@ -2,6 +2,7 @@ import type {
   Alert,
   ClientMessage,
   CreateProjectBody,
+  DirListing,
   ProjectConfig,
   ServerMessage,
   SessionSnapshot,
@@ -219,6 +220,7 @@ export function useCommander() {
     stop: (projectId: string) => send({ t: 'stop', projectId }),
     restart: (projectId: string) => send({ t: 'restart', projectId }),
     addProject: (body: CreateProjectBody) => api<ProjectConfig>('/api/projects', { method: 'POST', body: JSON.stringify(body) }),
+    listDirs: (path?: string) => api<DirListing>(`/api/fs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
     removeProject: (id: string) => api<void>(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     reconnectNow: () => {
       clearTimeout(retryTimer)

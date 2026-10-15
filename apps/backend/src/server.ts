@@ -8,6 +8,7 @@ import type { Alert, ClientMessage, CreateProjectBody, ServerMessage } from '@cl
 import { WS_PATH } from '@claudeboard/shared'
 import type { ServerConfig } from './config.ts'
 import { ProjectStore } from './projectStore.ts'
+import { listDirs } from './dirBrowser.ts'
 import { SessionManager } from './sessionManager.ts'
 import { OfficialUsageClient } from './officialUsage.ts'
 import { UsageTracker } from './usageTracker.ts'
@@ -110,6 +111,14 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   app.get('/api/sessions', async () => sessions.snapshots())
   app.get('/api/usage', async () => usage.summary())
   app.get('/api/alerts', async () => alerts)
+
+  app.get<{ Querystring: { path?: string } }>('/api/fs', async (req, reply) => {
+    try {
+      return listDirs(req.query.path)
+    } catch (err) {
+      return reply.code(400).send({ error: (err as Error).message })
+    }
+  })
 
   app.post<{ Body: CreateProjectBody }>('/api/projects', async (req, reply) => {
     const body = req.body

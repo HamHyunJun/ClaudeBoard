@@ -1,5 +1,7 @@
 <script setup lang="ts">
 /** 로컬 디렉터리를 관제 대상 프로젝트로 등록한다 */
+import type { DirListing } from '@claudeboard/shared'
+
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const cmd = useCommander()
@@ -9,12 +11,44 @@ const form = reactive({ name: '', cwd: '', command: '', autoStart: true })
 const error = ref('')
 const saving = ref(false)
 
+// 폴더 찾아보기: 백엔드가 실행 중인 컴퓨터의 디렉터리를 한 단계씩 연다
+const browsing = ref(false)
+const listing = ref<DirListing | null>(null)
+const browseError = ref('')
+const listEl = ref<HTMLElement | null>(null)
+
+async function browse(path?: string) {
+  browseError.value = ''
+  try {
+    listing.value = await cmd.listDirs(path)
+    await nextTick()
+    listEl.value?.scrollTo({ top: 0 })
+  } catch (e) {
+    browseError.value = (e as Error).message
+  }
+}
+
+function toggleBrowse() {
+  browsing.value = !browsing.value
+  if (browsing.value) browse(form.cwd.trim() || undefined)
+}
+
+function pick() {
+  if (!listing.value) return
+  form.cwd = listing.value.path
+  browsing.value = false
+  error.value = ''
+}
+
 watch(
   () => props.open,
   (o) => {
     if (o) {
       Object.assign(form, { name: '', cwd: '', command: '', autoStart: true })
       error.value = ''
+      browsing.value = false
+      listing.value = null
+      browseError.value = ''
     }
   }
 )
@@ -53,19 +87,39 @@ async function submit() {
 
       <div class="field">
         <label for="f-cwd">프로젝트 경로</label>
-        <input
-          id="f-cwd"
-          v-model="form.cwd"
-          class="code"
-          type="text"
-          autofocus
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="~/work/payments-api"
-          :aria-invalid="!!error"
-          aria-describedby="f-cwd-help f-error"
-        />
+        <div class="path-row">
+          <input
+            id="f-cwd"
+            v-model="form.cwd"
+            class="code"
+            type="text"
+            autofocus
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="~/work/payments-api"
+            :aria-invalid="!!error"
+            aria-describedby="f-cwd-help f-error"
+          />
+          <button type="button" class="btn" :aria-expanded="browsing" aria-controls="dir-browser" @click="toggleBrowse">
+            {{ browsing ? '닫기' : '찾아보기' }}
+          </button>
+        </div>
         <p id="f-cwd-help" class="help">백엔드가 실행 중인 컴퓨터의 절대 경로 또는 ~ 로 시작하는 경로</p>
+
+        <div v-if="browsing" id="dir-browser" class="browser" role="group" aria-label="폴더 찾아보기">
+          <div class="crumb">
+            <button type="button" class="up" :disabled="!listing?.parent" aria-label="상위 폴더" @click="browse(listing!.parent!)">↑</button>
+            <code class="here" :title="listing?.path">{{ listing?.path ?? '…' }}</code>
+          </div>
+          <ul ref="listEl" class="dirs" aria-label="하위 폴더">
+            <li v-for="d in listing?.dirs" :key="d">
+              <button type="button" class="dir" @click="browse(listing!.path.replace(/\/$/, '') + '/' + d)">{{ d }}</button>
+            </li>
+          </ul>
+          <p v-if="listing && !listing.dirs.length" class="empty">하위 폴더가 없습니다.</p>
+          <p class="browse-error" role="alert">{{ browseError }}</p>
+          <button type="button" class="btn primary pick" :disabled="!listing" @click="pick">이 폴더 선택</button>
+        </div>
       </div>
 
       <div class="field">
@@ -130,6 +184,87 @@ h2 {
       border-color: var(--approval);
     }
   }
+}
+.path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.browser {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  background: var(--ink-1);
+}
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.up {
+  @include pressable;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background: var(--ink-2);
+  &:disabled {
+    opacity: 0.4;
+  }
+}
+.here {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl; // 길면 앞이 아니라 뒤(현재 폴더)가 보이게
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.dirs {
+  display: grid;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.dir {
+  @include pressable;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  text-align: left;
+  font-size: var(--fs-sm);
+  &::before {
+    content: '▸ ';
+    color: var(--text-3);
+  }
+  &:hover {
+    background: var(--ink-3);
+  }
+}
+.empty,
+.browse-error {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+.browse-error {
+  color: var(--approval);
+  &:empty {
+    display: none;
+  }
+}
+.pick {
+  justify-self: end;
 }
 .opt {
   font-weight: 400;
