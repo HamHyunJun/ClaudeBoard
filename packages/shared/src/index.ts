@@ -62,6 +62,16 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   { label: '/compact', prompt: '/compact' }
 ]
 
+/** HUD 가 보고하는 저장소 하나의 git 상태 */
+export interface GitRepoState {
+  branch: string
+  staged: number
+  modified: number
+  untracked: number
+  ahead: number
+  behind: number
+}
+
 export interface SessionSnapshot {
   projectId: string
   process: ProcessState
@@ -73,6 +83,8 @@ export interface SessionSnapshot {
   lastOutputAt?: number
   /** 화면 요약용 마지막 의미 있는 출력 한 줄 */
   lastLine?: string
+  /** 하단 상태줄(HUD)의 git 상태. 화면에서 사라져도 마지막 값을 유지 */
+  git?: GitRepoState[]
   /** 현재 실행 중인 도구 (예: "Bash", "Edit") */
   activeTool?: string
   approval?: ApprovalRequest

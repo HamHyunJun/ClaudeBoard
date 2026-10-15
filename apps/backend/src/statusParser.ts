@@ -1,4 +1,4 @@
-import type { ApprovalRequest, SessionStatus, WorkflowProgress, WorkflowStage } from '@claudeboard/shared'
+import type { ApprovalRequest, GitRepoState, SessionStatus, WorkflowProgress, WorkflowStage } from '@claudeboard/shared'
 import { WORKFLOW_STAGES } from '@claudeboard/shared'
 
 /**
@@ -31,6 +31,8 @@ export interface ScreenAnalysis {
   activeTool?: string
   /** 화면에서 가장 최근의 의미 있는 출력 한 줄 */
   lastLine?: string
+  /** HUD 줄에서 읽은 git 상태 */
+  git?: GitRepoState[]
 }
 
 function clean(line: string): string {
@@ -42,6 +44,23 @@ function unbox(line: string): string {
   return line.replace(/^[\s│┃|╭╮╰╯─━]+|[\s│┃|╭╮╰╯─━]+$/gu, '').trim()
 }
 
+const GIT_SYMBOL: Record<string, keyof Omit<GitRepoState, 'branch'>> = {
+  '+': 'staged', '!': 'modified', '?': 'untracked', '⇡': 'ahead', '⇣': 'behind'
+}
+
+/** `branch:main | ?4, branch:dev | !3 ?3` → 저장소별 상태. HUD 줄이 아니면 undefined */
+export function parseGitHud(line: string): GitRepoState[] | undefined {
+  if (!/\bbranch:/.test(line)) return undefined
+  const repos = line.split(/,\s*(?=branch:)/).flatMap((part) => {
+    const branch = part.match(/branch:(\S+)/)?.[1]
+    if (!branch) return []
+    const repo: GitRepoState = { branch, staged: 0, modified: 0, untracked: 0, ahead: 0, behind: 0 }
+    for (const [, sym, n] of part.matchAll(/([+!?⇡⇣])(\d+)/g)) repo[GIT_SYMBOL[sym!]!] = Number(n)
+    return [repo]
+  })
+  return repos.length ? repos : undefined
+}
+
 function isChrome(line: string): boolean {
   const t = line.trim()
   if (!t) return true
@@ -50,11 +69,17 @@ function isChrome(line: string): boolean {
   if (/^[│┃]?\s*>\s*[│┃]?$/u.test(t)) return true
   if (/\? for shortcuts|shift\+tab|auto-accept|bypass permissions/i.test(t)) return true
   // 하단 상태줄(HUD): `[omc#…] | Model: …`, `Model: … | ctx …` 처럼 | 로 나뉜 메타 정보
+  if (parseGitHud(t)) return true
   if (/^\[[\w#.-]+\]\s*\|/.test(t) || (/\bModel:/i.test(t) && t.includes('|'))) return true
   return false
 }
 
 export function analyzeScreen(rawLines: string[]): ScreenAnalysis {
+  const git = [...rawLines].reverse().slice(0, 25).map((l) => parseGitHud(unbox(l))).find(Boolean)
+  return { ...analyzeBody(rawLines), git }
+}
+
+function analyzeBody(rawLines: string[]): ScreenAnalysis {
   const lines = rawLines.map(clean)
   // 실제 내용이 있는 마지막 줄 위치
   let end = lines.length
