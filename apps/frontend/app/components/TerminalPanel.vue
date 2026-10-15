@@ -14,7 +14,7 @@ const tabEls = ref<Record<string, HTMLButtonElement>>({})
 const indicator = ref({ x: 0, w: 0 })
 const xterm = ref<{ focus: () => void }>()
 
-const item = computed(() => cmd.selected.value)
+const item = computed(() => cmd.terminalTarget.value)
 const session = computed(() => item.value?.session)
 const running = computed(() => session.value?.process === 'running' || session.value?.process === 'starting')
 const events = computed(() => cmd.alerts.value.filter((a) => a.projectId === item.value?.project.id))
@@ -33,10 +33,6 @@ function onTabKey(e: KeyboardEvent) {
   nextTick(() => tabEls.value[tab.value]?.focus())
 }
 
-function close() {
-  cmd.terminalOpen.value = false
-}
-
 defineExpose({ focus: () => xterm.value?.focus() })
 </script>
 
@@ -53,9 +49,6 @@ defineExpose({ focus: () => xterm.value?.focus() })
         <button v-if="!running" class="tool" type="button" @click="cmd.start(item.project.id)">시작</button>
         <button v-else class="tool" type="button" @click="cmd.input(item.project.id, '\x1b')" title="Esc 키 전송: 현재 작업 중단">
           중단
-        </button>
-        <button class="tool close" type="button" aria-label="터미널 닫기" @click="close">
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
         </button>
       </div>
     </header>
@@ -111,6 +104,8 @@ defineExpose({ focus: () => xterm.value?.focus() })
 <style scoped lang="scss">
 .panel {
   display: grid;
+  // 열을 패널 폭에 고정: auto 열이면 넓은 xterm 때문에 열이 늘어나 헤더의 닫기 버튼이 잘린다
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto 1fr auto;
   height: 100%;
   min-height: 0;
@@ -170,12 +165,6 @@ defineExpose({ focus: () => xterm.value?.focus() })
   &:hover {
     background: var(--ink-3);
   }
-  &.close {
-    padding: 0;
-    border-color: transparent;
-    background: transparent;
-    color: var(--text-2);
-  }
 }
 
 .tabs {
@@ -226,6 +215,7 @@ defineExpose({ focus: () => xterm.value?.focus() })
 .views {
   position: relative;
   min-height: 0;
+  min-width: 0;
 }
 .view {
   height: 100%;

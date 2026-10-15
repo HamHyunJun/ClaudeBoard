@@ -102,6 +102,25 @@ export interface ProjectUsage {
   sparkline: number[]
 }
 
+/** Claude 가 직접 알려주는 한도 하나 (로컬 토큰 추정이 아님) */
+export interface OfficialLimit {
+  /** 0~100 사용률 */
+  percent: number
+  resetsAt: number | null
+}
+
+/** Claude 구독 계정이 보고하는 실측 사용량 */
+export interface OfficialUsage {
+  /** ok: 방금 조회 / stale: 조회 실패로 마지막 값 유지 / unavailable: 값 없음 */
+  status: 'ok' | 'stale' | 'unavailable'
+  /** 구독 플랜 표시명 (예: Pro, Max 5x) */
+  plan?: string
+  fiveHour?: OfficialLimit | null
+  sevenDay?: OfficialLimit | null
+  fetchedAt?: number
+  message?: string
+}
+
 export interface UsageSummary {
   generatedAt: number
   today: TokenBreakdown
@@ -116,6 +135,8 @@ export interface UsageSummary {
     used: number
     limit: number
   }
+  /** 구독 계정 실측값. 없으면(데모 등) 위 로컬 추정치만 의미가 있다 */
+  official?: OfficialUsage
   projects: ProjectUsage[]
   /** 사용량 로그 디렉터리를 찾지 못했을 때 안내용 */
   sourceDir: string

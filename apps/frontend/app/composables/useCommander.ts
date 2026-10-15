@@ -24,6 +24,11 @@ const usage = ref<UsageSummary | null>(null)
 const alerts = ref<Alert[]>([])
 const selectedId = ref<string | null>(null)
 const terminalOpen = ref(false)
+// 선택을 해제해도 터미널이 엉뚱한 세션으로 바뀌지 않도록 마지막 선택을 기억
+const lastSelectedId = ref<string | null>(null)
+watch(selectedId, (id) => {
+  if (id) lastSelectedId.value = id
+})
 const lastError = ref<string | null>(null)
 
 const listeners = new Map<string, Set<OutputListener>>()
@@ -141,6 +146,15 @@ export function useCommander() {
     sessionList.value.filter((x) => x.session?.status === 'REQUIRES_APPROVAL' && x.session.approval)
   )
   const selected = computed(() => sessionList.value.find((x) => x.project.id === selectedId.value) ?? null)
+  /** 터미널 패널이 보여줄 세션: 선택 → 마지막 선택 → 실행 중인 첫 세션 → 첫 세션 */
+  const terminalTarget = computed(
+    () =>
+      selected.value ??
+      sessionList.value.find((x) => x.project.id === lastSelectedId.value) ??
+      sessionList.value.find((x) => x.session?.process === 'running') ??
+      sessionList.value[0] ??
+      null
+  )
   const counts = computed(() => {
     const c = { running: 0, busy: 0, approval: 0 }
     for (const s of Object.values(sessions.value)) {
@@ -192,6 +206,7 @@ export function useCommander() {
     sessionList,
     pendingApprovals,
     selected,
+    terminalTarget,
     counts,
     subscribe,
     onAlert,

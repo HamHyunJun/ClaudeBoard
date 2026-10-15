@@ -21,6 +21,11 @@ export function formatCountdown(ms: number): string {
   return [h, m, sec].map((v) => String(v).padStart(2, '0')).join(':')
 }
 
+/** 리셋 시각 → "금 오후 2:00" */
+export function formatResetAt(at: number): string {
+  return new Date(at).toLocaleString('ko-KR', { weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 /** 경과 시간 → "12초", "3분", "1시간 5분" */
 export function formatElapsed(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000))

@@ -16,10 +16,19 @@ const breakdown = computed(() => {
   ]
 })
 
+// Claude 가 알려준 실측값. 조회 불가일 때만 로컬 로그 추정치로 돌아간다
+const official = computed(() => u.value?.official)
+const live = computed(() => !!official.value && official.value.status !== 'unavailable')
+const fiveHour = computed(() => (live.value ? official.value?.fiveHour : null) ?? null)
+const sevenDay = computed(() => (live.value ? official.value?.sevenDay : null) ?? null)
+
 const resetIn = computed(() => {
-  const r = u.value?.rateWindow.resetsAt
-  return r ? r - now.value : null
+  const r = live.value ? fiveHour.value?.resetsAt : u.value?.rateWindow.resetsAt
+  return r && r > now.value ? r - now.value : null
 })
+// 리셋 시각이 지났으면 새 창이 열리기 전이므로 0%
+const fiveHourPercent = computed(() => (resetIn.value === null ? 0 : (fiveHour.value?.percent ?? 0)))
+const weekResetsAt = computed(() => sevenDay.value?.resetsAt)
 
 const nameOf = (id: string | null, cwd: string) =>
   (id && cmd.projects.value.find((p) => p.id === id)?.name) || shortPath(cwd)
@@ -51,18 +60,33 @@ const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTo
     </section>
 
     <section class="block window" aria-label="레이트 리밋 창">
-      <p class="caption">5시간 사용 창</p>
+      <p class="caption">
+        5시간 사용 창<template v-if="live && official?.plan"> · <strong class="plan">{{ official.plan }}</strong></template>
+      </p>
       <p v-if="resetIn !== null" class="countdown" aria-live="off">
         <span class="clock">{{ formatCountdown(resetIn) }}</span>
         <span class="after">후 리셋</span>
       </p>
       <p v-else class="countdown idle">활성 창이 없습니다. 다음 요청부터 5시간이 시작됩니다.</p>
-      <QuotaMeter label="이번 창" :used="u?.rateWindow.used ?? 0" :limit="u?.rateWindow.limit ?? 1" />
+      <QuotaMeter v-if="fiveHour" label="이번 창" :percent="fiveHourPercent" detail="Claude 실측" />
+      <QuotaMeter v-else label="이번 창" :used="u?.rateWindow.used ?? 0" :limit="u?.rateWindow.limit ?? 1" detail="로컬 추정" />
     </section>
 
     <section class="block quotas" aria-label="주간·월간 할당량">
-      <QuotaMeter label="이번 주" :used="u?.week.used ?? 0" :limit="u?.week.limit ?? 1" detail="월요일 기준" />
-      <QuotaMeter label="이번 달" :used="u?.month.used ?? 0" :limit="u?.month.limit ?? 1" detail="1일 기준" />
+      <QuotaMeter
+        v-if="sevenDay"
+        label="이번 주"
+        :percent="sevenDay.percent"
+        :detail="weekResetsAt ? `${formatResetAt(weekResetsAt)} 리셋` : 'Claude 실측'"
+      />
+      <template v-else>
+        <QuotaMeter label="이번 주" :used="u?.week.used ?? 0" :limit="u?.week.limit ?? 1" detail="로컬 추정 · 월요일 기준" />
+        <QuotaMeter label="이번 달" :used="u?.month.used ?? 0" :limit="u?.month.limit ?? 1" detail="로컬 추정 · 1일 기준" />
+      </template>
+      <p v-if="official && official.status !== 'ok'" class="warn" role="status">
+        {{ official.status === 'stale' ? '최신 조회에 실패해 마지막 값을 보여줍니다.' : 'Claude 실측값을 가져오지 못해 로컬 추정치를 보여줍니다.' }}
+        {{ official.message }}
+      </p>
     </section>
 
     <section class="block ranking" aria-labelledby="ranking-title">
@@ -80,7 +104,7 @@ const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTo
     <p v-if="u && !u.sourceAvailable" class="note">
       사용량 로그 폴더를 찾지 못했습니다: <code>{{ shortPath(u.sourceDir) }}</code>. Claude Code를 한 번 실행하면 생성됩니다.
     </p>
-    <p class="note">한도 값은 백엔드 환경 변수(CLAUDEBOARD_*_TOKENS)로 조정합니다.</p>
+    <p v-if="!live" class="note">추정 한도는 백엔드 환경 변수(CLAUDEBOARD_*_TOKENS)로 조정합니다.</p>
   </aside>
 </template>
 
@@ -250,6 +274,15 @@ const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTo
       background: var(--executing);
     }
   }
+}
+
+.plan {
+  color: var(--text);
+}
+.warn {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--executing);
 }
 
 .muted,
