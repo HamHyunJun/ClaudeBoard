@@ -226,5 +226,18 @@ export interface DirListing {
   dirs: string[]
 }
 
+/** 프로젝트 폴더를 열 수 있는 응용 프로그램 (POST /api/projects/:id/open) */
+export const OPEN_APPS = [
+  { id: 'vscode', label: 'VS Code' },
+  { id: 'cursor', label: 'Cursor' },
+  { id: 'finder', label: 'Finder' },
+  { id: 'terminal', label: '터미널' }
+] as const
+export type OpenAppId = (typeof OPEN_APPS)[number]['id']
+
+export interface OpenProjectBody {
+  app: OpenAppId
+}
+
 export const WS_PATH = '/ws'
 export const DEFAULT_BACKEND_PORT = 4317

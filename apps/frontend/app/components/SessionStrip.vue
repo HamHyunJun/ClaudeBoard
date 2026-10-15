@@ -184,6 +184,9 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
             {{ qa.label }}
           </button>
           <span class="spacer" />
+          <button class="chip ghost" type="button" :aria-label="`${project.name} 폴더 열기`" @click="cmd.openTargetId.value = project.id">
+            폴더 열기
+          </button>
           <button v-if="running" class="chip ghost" type="button" @click="cmd.restart(project.id)">재시작</button>
           <button v-if="running" class="chip ghost danger" type="button" @click="cmd.stop(project.id)">중지</button>
           <button
