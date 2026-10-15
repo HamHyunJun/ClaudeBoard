@@ -66,10 +66,12 @@ onMounted(() => {
     if (a.kind !== 'approval') notify.toast({ level: a.level, title: a.title, body: a.body, projectId: a.projectId })
     notify.desktop(a, () => a.projectId && cmd.openTerminal(a.projectId))
   })
+  window.addEventListener('keydown', onGlobalKey)
 })
-onBeforeUnmount(() => offAlert?.())
-onMounted(() => window.addEventListener('keydown', onGlobalKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
+onBeforeUnmount(() => {
+  offAlert?.()
+  window.removeEventListener('keydown', onGlobalKey)
+})
 
 const hasTerminal = computed(() => !!cmd.terminalTarget.value)
 const termOpen = computed(() => cmd.terminalOpen.value && hasTerminal.value)
