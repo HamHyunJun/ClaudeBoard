@@ -132,6 +132,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(new URL(path, backendOrigin()), {
     ...init,
     headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) }
+  }).catch(() => {
+    throw new Error('백엔드에 연결하지 못했습니다. 서버가 실행 중인지 확인하세요')
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -169,11 +171,12 @@ export function useCommander() {
       null
   )
   const counts = computed(() => {
-    const c = { running: 0, busy: 0, approval: 0 }
+    const c = { running: 0, busy: 0, approval: 0, asking: 0 }
     for (const s of Object.values(sessions.value)) {
       if (s.process === 'running') c.running++
       if (s.status === 'THINKING' || s.status === 'EXECUTING') c.busy++
       if (s.status === 'REQUIRES_APPROVAL') c.approval++
+      if (s.status === 'ASKING') c.asking++
     }
     return c
   })
@@ -237,6 +240,16 @@ export function useCommander() {
     listDirs: (path?: string) => api<DirListing>(`/api/fs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
     openProject: (id: string, app: OpenAppId) =>
       api<void>(`/api/projects/${encodeURIComponent(id)}/open`, { method: 'POST', body: JSON.stringify({ app } satisfies OpenProjectBody) }),
+    /** 세션을 위/아래로 한 칸, 또는 맨 위로 옮긴다 */
+    moveProject(id: string, to: 'up' | 'down' | 'top') {
+      const ids = projects.value.map((p) => p.id)
+      const i = ids.indexOf(id)
+      if (i < 0) return Promise.resolve()
+      const j = to === 'top' ? 0 : Math.max(0, Math.min(ids.length - 1, i + (to === 'up' ? -1 : 1)))
+      if (j === i) return Promise.resolve()
+      ids.splice(j, 0, ids.splice(i, 1)[0]!)
+      return api<void>('/api/projects/order', { method: 'PUT', body: JSON.stringify({ ids }) })
+    },
     removeProject: (id: string) => api<void>(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     reconnectNow: () => {
       clearTimeout(retryTimer)

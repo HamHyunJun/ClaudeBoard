@@ -35,6 +35,10 @@ const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중',
         <dt>승인 대기</dt>
         <dd>{{ cmd.counts.value.approval }}</dd>
       </div>
+      <div :class="{ alarm: cmd.counts.value.asking > 0, asking: true }">
+        <dt>답변 대기</dt>
+        <dd>{{ cmd.counts.value.asking }}</dd>
+      </div>
     </dl>
 
     <div class="right">
@@ -122,6 +126,13 @@ const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중',
   dd {
     margin: 0;
     font-weight: 700;
+  }
+  .alarm.asking {
+    background: var(--asking-wash);
+    dt,
+    dd {
+      color: var(--asking);
+    }
   }
   .alarm {
     background: var(--approval-wash);

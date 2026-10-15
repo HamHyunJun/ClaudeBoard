@@ -58,6 +58,14 @@ const cls = computed(() => (props.offline ? 'offline' : STATUS_CLASS[props.statu
   }
 }
 
+// 질문: 승인보다 한 박자 느린 링 — 확인이 필요하다는 점만 다르게 알린다
+.asking {
+  --c: var(--asking);
+  &::after {
+    animation: ring 1.2s var(--ease-out) infinite;
+  }
+}
+
 @keyframes breathe {
   0%,
   100% {

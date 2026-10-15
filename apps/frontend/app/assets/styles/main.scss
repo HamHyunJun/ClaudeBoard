@@ -18,13 +18,19 @@
   --thinking: #a99bf0;
   --executing: #f0973a;
   --approval: #f2577a;
+  --asking: var(--approval);
   --ok: #57c79a;
+  // 할당량 미터 전용: 초록 → 노랑 → 빨강
+  --quota-ok: #8fd4b4;
+  --quota-mid: #f0d68a;
+  --quota-high: #ee9a9a;
   --focus: #9fd1ff;
 
   --idle-wash: rgb(127 163 194 / 0.1);
   --thinking-wash: rgb(169 155 240 / 0.12);
   --executing-wash: rgb(240 151 58 / 0.13);
   --approval-wash: rgb(242 87 122 / 0.14);
+  --asking-wash: var(--approval-wash);
   --ok-wash: rgb(87 199 154 / 0.14);
 
   --font-ui: 'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
@@ -74,13 +80,18 @@
   --thinking: #6d57d6;
   --executing: #c76a0a;
   --approval: #d0305a;
+  --asking: var(--approval);
   --ok: #1f9568;
+  --quota-ok: #6fb996;
+  --quota-mid: #d4b254;
+  --quota-high: #d98080;
   --focus: #1d6fd1;
 
   --idle-wash: rgb(63 122 168 / 0.1);
   --thinking-wash: rgb(109 87 214 / 0.1);
   --executing-wash: rgb(199 106 10 / 0.11);
   --approval-wash: rgb(208 48 90 / 0.1);
+  --asking-wash: var(--approval-wash);
   --ok-wash: rgb(31 149 104 / 0.11);
 
   --scrim: rgb(24 33 43 / 0.35);

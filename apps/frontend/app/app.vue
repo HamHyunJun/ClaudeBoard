@@ -38,8 +38,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
 
 useHead({
   title: computed(() => {
-    const n = cmd.counts.value.approval
-    return n ? `(${n}) 승인 대기 | ClaudeBoard` : 'ClaudeBoard'
+    const { approval, asking } = cmd.counts.value
+    const n = approval + asking
+    return n ? `(${n}) ${approval ? '승인' : '답변'} 대기 | ClaudeBoard` : 'ClaudeBoard'
   })
 })
 </script>

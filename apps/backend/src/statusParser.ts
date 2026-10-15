@@ -23,6 +23,9 @@ const RUNNING_LINE = /⎿\s+(Running|실행 중)…?/
 
 const MENU_QUESTION = /(Do you want to [^?]+\?|Would you like to [^?]+\?|진행할까요\?|허용하시겠습니까\?)/i
 const MENU_YES = /^\s*(❯|>)?\s*1\.\s*(Yes|예|허용)/i
+/** Claude Code 의 선택형 질문(AskUserQuestion) 하단 안내와 번호 선택지 */
+const ASK_FOOTER = /Enter to select/i
+const ASK_OPTION = /^\s*(❯|>)?\s*1\.\s+\S/
 const YN_PROMPT = /(\[(y|Y)\/(n|N)\]|\((y|Y)\/(n|N)\)|\(yes\/no\)|\[yes\/no\])\s*[:?]?\s*$/
 
 export interface ScreenAnalysis {
@@ -108,6 +111,21 @@ function analyzeBody(rawLines: string[]): ScreenAnalysis {
       approval: { kind: 'menu', question, context: context.slice(-6) },
       activeTool: toolLine?.match(TOOL_HEADER)?.[1] ?? detectTool(context),
       lastLine: question
+    }
+  }
+
+  // 1-1) 선택형 질문: "Enter to select" 안내와 "1. …" 선택지가 같이 보인다. 승인 메뉴가 아닌 경우만 여기로 온다
+  if (tail.some((l) => ASK_FOOTER.test(l))) {
+    const optIdx = findLastIndex(tail, (l) => ASK_OPTION.test(unbox(l)))
+    if (optIdx >= 0) {
+      // 선택지 위쪽, 탭 표시줄(☐/✔)이나 구분선 아래의 본문이 질문
+      const head = findLastIndex(tail.slice(0, optIdx), (l) => /[☐✔☒]|^[─━]{5,}/u.test(l))
+      const question = tail
+        .slice(head + 1, optIdx)
+        .map(unbox)
+        .filter(Boolean)
+        .join(' ')
+      return { status: 'ASKING', lastLine: question || '선택지에 답해 주세요' }
     }
   }
 

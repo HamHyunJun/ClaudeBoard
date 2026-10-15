@@ -140,3 +140,37 @@ test('CLI 경고 배너(⚠ …)는 마지막 출력으로 잡지 않는다', ()
   ])
   assert.equal(r.lastLine, '⏺ 완료했습니다.')
 })
+
+// 실제 화면: Claude 가 선택지로 질문하고 사용자의 답을 기다리는 상태 (포트폴리오 세션, Vercel 배포 질문)
+const askScreen = [
+  '❯ vercel에 올려서 고정 url 하나 만들어줘. 나중에 면접관한테 해당 url만 줄 수 있게',
+  '',
+  '  Called Vercel, ran 1 shell command ',
+  '──────────────────────────────────────────────────────────────────────────────────────────────',
+  '←  ☐ 배포 방식  ☐ 프로젝트명  ✔ Submit  →',
+  '',
+  '│ Vercel에 portfolio 프로젝트가 아직 없고 CLI도 없습니다. GitHub ',
+  '│ 저장소(HamHyunJun/portfolio)를 Vercel에 연결해 배포하려는데, 이러려면 master를 origin에 ',
+  '│ 푸시해야 합니다. 진행할까요?',
+  '',
+  '❯ 1. master 푸시 + Git 연결 (Recommended)',
+  '     master를 origin에 푸시하고 Vercel 프로젝트를 만들어 연결.',
+  '  2. 푸시 없이 로컬에서 직접 배포',
+  '     Vercel CLI를 설치해(npx) 로컬 파일을 바로 업로드.',
+  '  3. Type something.',
+  '──────────────────────────────────────────────────────────────────────────────────────────────',
+  '  4. Chat about this',
+  '',
+  'Enter to select · Tab/Arrow keys to navigate · Esc to cancel'
+]
+
+test('선택지 질문 화면은 승인이 아니라 ASKING 이고 질문 본문이 lastLine 이 된다', () => {
+  const r = analyzeScreen(askScreen)
+  assert.equal(r.status, 'ASKING')
+  assert.equal(r.approval, undefined)
+  assert.match(r.lastLine ?? '', /^Vercel에 portfolio 프로젝트가 아직 없고.*진행할까요\?$/)
+})
+
+test('Enter to select 안내만 있고 선택지가 없으면 ASKING 이 아니다', () => {
+  assert.equal(analyzeScreen(['Enter to select · Esc to cancel']).status, 'IDLE')
+})
