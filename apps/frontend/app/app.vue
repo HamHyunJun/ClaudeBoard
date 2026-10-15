@@ -95,6 +95,8 @@ useHead({
 
 <style scoped lang="scss">
 .shell {
+  // 서랍이 접히는 애니메이션 중 잠깐 생기는 가로 스크롤을 막는다 (clip 은 스크롤 컨테이너를 만들지 않는다)
+  overflow-x: clip;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   height: 100vh;

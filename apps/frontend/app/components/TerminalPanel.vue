@@ -223,6 +223,7 @@ defineExpose({ focus: () => xterm.value?.focus() })
 }
 
 .events {
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 12px 16px;
 }

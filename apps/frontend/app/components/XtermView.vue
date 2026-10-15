@@ -26,22 +26,20 @@ let collapsed = true
 let settleTimer: ReturnType<typeof setTimeout> | undefined
 // 리사이즈 직후 Claude Code 가 화면(입력창 아래 상태줄 등)을 다시 그리므로, 출력이 이 시간 동안 멈출 때까지 가린다
 const QUIET_MS = 150
-// 출력이 계속 와도 이 시간이 지나면 보여준다
-const MAX_WAIT_MS = 1000
+// 작업 중에는 스피너 때문에 출력이 끊기지 않으므로, 계속 와도 이 시간이 지나면 보여준다
+const MAX_WAIT_MS = 400
 let waiting = false
 let quietTimer: ReturnType<typeof setTimeout> | undefined
 let deadlineTimer: ReturnType<typeof setTimeout> | undefined
 
-function reveal() {
-  waiting = false
-  clearTimeout(quietTimer)
-  clearTimeout(deadlineTimer)
-  ready.value = true
-}
 function cancelReveal() {
   waiting = false
   clearTimeout(quietTimer)
   clearTimeout(deadlineTimer)
+}
+function reveal() {
+  cancelReveal()
+  ready.value = true
 }
 // 출력이 올 때마다 호출: 마지막 출력 뒤 QUIET_MS 가 지나야 보여준다
 function holdReveal() {
@@ -127,6 +125,9 @@ onMounted(() => {
     if (!term) return
     if (kind === 'replay') {
       const snap = cmd.sessions.value[props.projectId]
+      // 재연결 replay 도 프로세스 크기로 먼저 그려지므로, 맞추기 전까지 다시 가린다
+      cancelReveal()
+      ready.value = false
       term.reset()
       if (snap) term.resize(snap.cols, snap.rows)
       term.write(data, () => {
@@ -168,6 +169,9 @@ onBeforeUnmount(() => {
   clearTimeout(settleTimer)
   cancelReveal()
   term?.dispose()
+  // 이미 예약된 프레임이 dispose 된 터미널을 건드리지 않도록 비운다
+  term = undefined
+  fit = undefined
 })
 
 defineExpose({ focus: () => term?.focus() })
@@ -185,6 +189,8 @@ defineExpose({ focus: () => term?.focus() })
 <style scoped lang="scss">
 .xterm-wrap {
   position: relative;
+  // 서랍 폭이 줄어드는 동안 옛 cols 로 그려진 화면이 삐져나와 가로 스크롤이 생기지 않게 한다
+  overflow: hidden;
   width: 100%;
   height: 100%;
   min-height: 0;
