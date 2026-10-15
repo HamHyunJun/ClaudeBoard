@@ -101,7 +101,7 @@ export class Session extends EventEmitter {
       this.term.write(msg)
       this.emit('output', msg)
       this.busySince = null
-      this.update({ process: 'exited', pid: undefined, exitCode, status: 'IDLE', approval: undefined, activeTool: undefined, busySince: undefined })
+      this.update({ process: 'exited', pid: undefined, exitCode, status: 'IDLE', approval: undefined, activeTool: undefined, busySince: undefined, finishedAt: undefined })
       this.emitAlert({
         level: exitCode === 0 ? 'info' : 'warning',
         kind: 'process-exit',
@@ -255,6 +255,7 @@ export class Session extends EventEmitter {
     if (screen.status !== 'IDLE' && this.busySince === null) {
       this.busySince = now
       patch.busySince = now
+      patch.finishedAt = undefined
     }
     if (screen.status === 'REQUIRES_APPROVAL' && prev.status !== 'REQUIRES_APPROVAL') {
       this.emitAlert({
@@ -272,6 +273,7 @@ export class Session extends EventEmitter {
           title: `${this.project.name}: 작업 완료`,
           body: screen.lastLine ?? '입력을 기다리고 있습니다.'
         })
+        patch.finishedAt = now
       }
       this.busySince = null
       patch.busySince = undefined

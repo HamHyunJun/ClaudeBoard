@@ -81,6 +81,8 @@ export interface SessionSnapshot {
   statusSince: number
   /** 현재 작업(IDLE이 아닌 구간)이 시작된 시각. 대기 중이면 없음. 경과 시간 표시용 */
   busySince?: number
+  /** 작업이 끝나 대기로 돌아온 시각. 새 작업이 시작되면 사라진다. 명령 없이 그냥 대기 중인 세션과 구분하는 용도 */
+  finishedAt?: number
   /** 마지막 출력 시각 */
   lastOutputAt?: number
   /** 화면 요약용 마지막 의미 있는 출력 한 줄 */
