@@ -34,6 +34,8 @@ const lastSelectedId = ref<string | null>(null)
 watch(selectedId, (id) => {
   if (id) lastSelectedId.value = id
 })
+// 사용자가 확인한 완료 시각. 세션을 선택하면 그 시점까지의 완료를 본 것으로 친다
+const seenDoneAt = ref<Record<string, number>>({})
 const lastError = ref<string | null>(null)
 
 const listeners = new Map<string, Set<OutputListener>>()
@@ -150,6 +152,12 @@ export function useCommander() {
   const pendingApprovals = computed(() =>
     sessionList.value.filter((x) => x.session?.status === 'REQUIRES_APPROVAL' && x.session.approval)
   )
+  // 보고 있는 세션이 끝나는 경우도 바로 확인한 것으로 처리
+  watchEffect(() => {
+    const id = selectedId.value
+    const at = id ? sessions.value[id]?.finishedAt : undefined
+    if (id && at) seenDoneAt.value[id] = at
+  })
   const selected = computed(() => sessionList.value.find((x) => x.project.id === selectedId.value) ?? null)
   /** 터미널 패널이 보여줄 세션: 선택 → 마지막 선택 → 실행 중인 첫 세션 → 첫 세션 */
   const terminalTarget = computed(
@@ -209,6 +217,7 @@ export function useCommander() {
     selectedId,
     terminalOpen,
     openTargetId,
+    seenDoneAt,
     sessionList,
     pendingApprovals,
     selected,

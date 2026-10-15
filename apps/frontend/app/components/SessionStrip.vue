@@ -24,13 +24,18 @@ const promptInput = ref<HTMLInputElement>()
 
 const running = computed(() => props.session?.process === 'running' || props.session?.process === 'starting')
 const status = computed(() => props.session?.status ?? 'IDLE')
+// 명령을 내려 끝난 뒤 아직 확인하지 않은 대기. 명령 없이 그냥 대기 중인 세션과 구분한다
+const unseenDone = computed(() => {
+  const at = props.session?.finishedAt
+  return !!at && running.value && status.value === 'IDLE' && at > (cmd.seenDoneAt.value[props.project.id] ?? 0)
+})
 const statusLabel = computed(() => {
   const p = props.session?.process
   if (!p || p === 'stopped') return '꺼짐'
   if (p === 'starting') return '시작 중'
   if (p === 'exited') return '종료됨'
   if (p === 'error') return '실행 실패'
-  return STATUS_LABEL[status.value]
+  return unseenDone.value ? '완료 · 확인 대기' : STATUS_LABEL[status.value]
 })
 const elapsed = computed(() => (props.session && running.value ? formatElapsed(now.value - props.session.statusSince) : ''))
 const hot = computed(() => (props.usage?.last5m ?? 0) >= props.hogThreshold)
@@ -90,7 +95,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
 <template>
   <article
     class="strip"
-    :class="[running ? STATUS_CLASS[status] : 'offline', { selected, hot }]"
+    :class="[running ? STATUS_CLASS[status] : 'offline', { selected, hot, done: unseenDone }]"
     :aria-labelledby="nameId"
     :data-project="project.id"
     @click="onBoxClick($event, 'select')"
@@ -245,6 +250,11 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   &.executing {
     --c: var(--executing);
     --wash: var(--executing-wash);
+  }
+  &.done {
+    --c: var(--ok);
+    --wash: var(--ok-wash);
+    border-color: color-mix(in srgb, var(--ok) 45%, var(--rule));
   }
   &.approval {
     --c: var(--approval);
