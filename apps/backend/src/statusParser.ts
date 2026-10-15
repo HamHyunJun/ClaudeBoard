@@ -187,10 +187,35 @@ const STAGE_PATTERNS = [
 ]
 const EXPLICIT_PROGRESS = /(?:progress|진행률)\s*[:：]?\s*(\d{1,3})\s*%/i
 /** Claude Code TodoWrite 렌더링: ☒ 완료, ☐ 대기, ◼/■ 진행 중 */
-const TODO_LINE = /^\s*(?:⎿\s*)?([☒☐◼■□✔✓])\s+\S/
+const TODO_LINE = /^\s*(?:⎿\s*)?([☒☐◼◻■□✔✓])\s+\S/
 
 /** 단계별 기준 진행률: 해당 단계에 "들어섰을 때" 값 */
 const STAGE_BASE: Record<WorkflowStage, number> = { plan: 10, execute: 35, review: 65, verify: 85 }
+
+const VERIFY_CMD = /\b(test|vitest|jest|pytest|typecheck|tsc|lint|build|check)\b/i
+const USER_PROMPT = /^\s*[│┃]?\s*>\s+\S/
+
+/**
+ * 단계 표식이 없을 때 도구 사용 이력으로 단계를 추정한다. 마지막 사용자 프롬프트 이후만 보고,
+ * 단계는 되돌아가지 않는다(수정 후 파일을 다시 읽어도 execute 유지).
+ * shortcut: 도구 종류만 보는 휴리스틱, 'review' 는 표식이 있을 때만 잡힌다.
+ */
+function inferStage(lines: string[]): WorkflowStage | null {
+  let from = findLastIndex(lines, (l) => USER_PROMPT.test(l)) + 1
+  let best = -1
+  for (const l of lines.slice(from)) {
+    const m = l.match(TOOL_HEADER)
+    if (!m) continue
+    const tool = m[1]!
+    const stage: WorkflowStage = READING_TOOLS.includes(tool)
+      ? 'plan'
+      : tool === 'Bash' && VERIFY_CMD.test(m[2] ?? '')
+        ? 'verify'
+        : 'execute'
+    best = Math.max(best, WORKFLOW_STAGES.indexOf(stage))
+  }
+  return best >= 0 ? WORKFLOW_STAGES[best]! : null
+}
 
 export function analyzeWorkflow(bufferLines: string[], status: SessionStatus): WorkflowProgress {
   let stage: WorkflowStage | null = null
@@ -214,6 +239,8 @@ export function analyzeWorkflow(bufferLines: string[], status: SessionStatus): W
       explicitLine = i
     }
   }
+
+  if (!stage) stage = inferStage(bufferLines)
 
   // 가장 마지막에 그려진 연속된 Todo 블록만 센다 (이전 버전은 위로 스크롤된 사본)
   let done = 0
