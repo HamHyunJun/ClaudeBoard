@@ -150,9 +150,9 @@ defineExpose({
 .list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
   margin: 0;
-  padding: 0 0 24px;
+  padding: 0 0 28px;
   list-style: none;
   overflow-y: auto;
 }

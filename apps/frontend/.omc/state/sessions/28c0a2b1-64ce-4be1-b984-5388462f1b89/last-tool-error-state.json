@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd /Users/hyunjun/ClaudeBoard/apps/frontend/app && sed -i 's|^  --shadow: rgb(0 0 0 / 0.55);|  --shadow: rgb(0 0 0 / 0.55);\\\\n  --shadow-soft: rgb(0 0 0 / 0.28);|; s|^  --shadow: rgb(24 33...",
+  "error": "Exit code 1\nsed: 1: \"assets/styles/main.scss\n\": command a expects \\ followed by text",
+  "timestamp": "2026-10-15T02:53:22.110Z",
+  "retry_count": 1
+}
