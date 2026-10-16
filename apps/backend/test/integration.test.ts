@@ -104,3 +104,37 @@ test('데모 세션 E2E: PTY 입출력, 상태 전이, 승인, 사용량', { tim
     rmSync(home, { recursive: true, force: true })
   }
 })
+
+test('잘못된 WS 메시지(null, 필드 누락, 엉뚱한 타입)를 받아도 서버와 세션이 살아 있다', { timeout: 30_000 }, async () => {
+  const home = mkdtempSync(join(tmpdir(), 'cb-test-'))
+  process.env.CLAUDEBOARD_DEMO = '1'
+  process.env.CLAUDEBOARD_HOME = home
+  const commander = await createServer({ ...loadConfig(), port: 0, staticDir: join(home, 'none') })
+  await commander.app.listen({ host: '127.0.0.1', port: 0 })
+  const port = (commander.app.server.address() as { port: number }).port
+
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`)
+  const hello = await new Promise<Extract<ServerMessage, { t: 'hello' }>>((resolve) =>
+    ws.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+  )
+  const projectId = hello.projects[0]!.id
+  const bad = [
+    'null', '123', '"str"', '[]', '{}', '{"t":5}',
+    JSON.stringify({ t: 'resize', projectId }),
+    JSON.stringify({ t: 'resize', projectId, cols: 'a', rows: null }),
+    JSON.stringify({ t: 'input', projectId, data: 5 }),
+    JSON.stringify({ t: 'prompt', projectId, text: 7 }),
+    JSON.stringify({ t: 'start' }),
+    JSON.stringify({ t: 'approve', projectId, decision: 1 })
+  ]
+  for (const raw of bad) ws.send(raw)
+  await new Promise((r) => setTimeout(r, 500))
+
+  assert.equal(ws.readyState, WebSocket.OPEN)
+  const res = await fetch(`http://127.0.0.1:${port}/api/health`)
+  assert.equal(res.ok, true)
+
+  ws.close()
+  await commander.close()
+  rmSync(home, { recursive: true, force: true })
+})

@@ -224,7 +224,16 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
       } catch {
         return send(ws, { t: 'error', message: '잘못된 메시지 형식입니다' })
       }
-      handle(client, msg)
+      // 어떤 입력이 와도 서버(와 자식 claude 세션)가 죽어서는 안 된다
+      if (!msg || typeof msg !== 'object' || typeof msg.t !== 'string') {
+        return send(ws, { t: 'error', message: '잘못된 메시지 형식입니다' })
+      }
+      try {
+        handle(client, msg)
+      } catch (err) {
+        app.log.error({ err }, 'WS 메시지 처리 실패')
+        send(ws, { t: 'error', message: '메시지를 처리하지 못했습니다' })
+      }
     })
     ws.on('close', () => clients.delete(client))
     ws.on('error', () => clients.delete(client))
@@ -232,7 +241,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
 
   const handle = (client: Client, msg: ClientMessage): void => {
     if (msg.t === 'ping') return send(client.ws, { t: 'pong' })
-    const session = sessions.get(msg.projectId)
+    const session = typeof msg.projectId === 'string' ? sessions.get(msg.projectId) : undefined
     if (!session) return send(client.ws, { t: 'error', message: '알 수 없는 프로젝트입니다', projectId: msg.projectId })
 
     switch (msg.t) {
@@ -254,7 +263,7 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
         }
         break
       case 'resize':
-        session.resize(msg.cols, msg.rows)
+        if (Number.isFinite(msg.cols) && Number.isFinite(msg.rows)) session.resize(msg.cols, msg.rows)
         break
       case 'approve':
         if (!session.answerApproval(msg.decision)) {
