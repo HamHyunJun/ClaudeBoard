@@ -13,6 +13,8 @@ import { isOpenApp, openInApp } from './openApp.ts'
 import { SessionManager } from './sessionManager.ts'
 import { OfficialUsageClient } from './officialUsage.ts'
 import { UsageTracker } from './usageTracker.ts'
+import { AlertLog } from './alertLog.ts'
+import { notifyOs, shouldNotifyOs } from './osNotify.ts'
 
 export const SERVER_VERSION = '0.1.0'
 const MAX_ALERTS = 50
@@ -46,7 +48,8 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   if (cfg.demo) seedDemoProjects(store, cfg)
   const sessions = new SessionManager(cfg)
   const usage = new UsageTracker(cfg)
-  const alerts: Alert[] = []
+  const alertLog = new AlertLog(join(cfg.dataDir, 'alerts.jsonl'))
+  const alerts: Alert[] = alertLog.load(MAX_ALERTS)
   const clients = new Set<Client>()
 
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' } })
@@ -85,7 +88,10 @@ export async function createServer(cfg: ServerConfig): Promise<Commander> {
   const pushAlert = (alert: Alert): void => {
     alerts.unshift(alert)
     alerts.length = Math.min(alerts.length, MAX_ALERTS)
+    alertLog.append(alert)
     broadcast({ t: 'alert', alert })
+    // 브라우저가 열려 있으면 화면 토스트·데스크톱 알림이 맡는다. 아무도 보고 있지 않을 때만 OS 알림
+    if (cfg.osNotify && clients.size === 0 && shouldNotifyOs(alert)) notifyOs(alert)
   }
 
   sessions.on('session', (session) => broadcast({ t: 'session', session }))

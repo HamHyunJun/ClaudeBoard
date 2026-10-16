@@ -168,7 +168,7 @@ export type AlertLevel = 'info' | 'warning' | 'critical'
 export interface Alert {
   id: string
   level: AlertLevel
-  kind: 'token-hog' | 'approval' | 'question' | 'task-done' | 'process-exit' | 'error'
+  kind: 'token-hog' | 'approval' | 'question' | 'task-done' | 'process-exit' | 'error' | 'auto-restart'
   projectId?: string
   title: string
   body: string

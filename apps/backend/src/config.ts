@@ -36,6 +36,10 @@ export interface ServerConfig {
   }
   /** 링버퍼 크기(바이트) */
   replayBytes: number
+  /** 비정상 종료한 autoStart 세션을 다시 띄운다. maxAttempts 가 0 이면 끈다 */
+  autoRestart: { maxAttempts: number; baseMs: number }
+  /** 브라우저가 열려 있지 않을 때 macOS 알림 센터로 알린다 */
+  osNotify: boolean
 }
 
 export function loadConfig(): ServerConfig {
@@ -65,6 +69,11 @@ export function loadConfig(): ServerConfig {
       windowHours: intEnv('CLAUDEBOARD_WINDOW_HOURS', 5),
       hogTokens5m: intEnv('CLAUDEBOARD_HOG_TOKENS_5M', demo ? 300_000 : 400_000)
     },
-    replayBytes: intEnv('CLAUDEBOARD_REPLAY_BYTES', 512 * 1024)
+    replayBytes: intEnv('CLAUDEBOARD_REPLAY_BYTES', 512 * 1024),
+    autoRestart: {
+      maxAttempts: process.env.CLAUDEBOARD_AUTORESTART === '0' ? 0 : intEnv('CLAUDEBOARD_RESTART_MAX', 5),
+      baseMs: 2000
+    },
+    osNotify: process.platform === 'darwin' && !demo && process.env.CLAUDEBOARD_NOTIFY !== '0'
   }
 }
