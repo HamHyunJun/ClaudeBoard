@@ -5,8 +5,49 @@
       <p class="hint">
         <kbd>↑</kbd><kbd>↓</kbd> 이동 <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> 순서 변경 <kbd>t</kbd> 터미널 <kbd>/</kbd> 지시하기
       </p>
+      <button v-if="cmd.sessionList.value.length" class="bulk-toggle" type="button" :aria-pressed="bulkMode" @click="toggleBulk">
+        일괄 지시
+      </button>
       <button class="add" type="button" @click="emit('add')">프로젝트 추가</button>
     </header>
+
+    <Transition name="bulk">
+      <form v-if="bulkMode" class="bulk" aria-label="선택한 세션에 일괄 지시" @submit.prevent="sendBulk(bulkDraft)">
+        <div class="bulk-top">
+          <p class="bulk-count" aria-live="polite">
+            <strong>{{ checkedCount }}</strong>개 선택 · 실행 중 <strong>{{ runningChecked.length }}</strong>개
+          </p>
+          <button class="link" type="button" @click="checkAllRunning">실행 중 모두 선택</button>
+          <button class="link" type="button" :disabled="!checkedCount" @click="checkedIds = []">선택 해제</button>
+        </div>
+        <div class="bulk-row">
+          <label for="bulk-input" class="sr-only">선택한 세션들에 보낼 지시</label>
+          <input
+            id="bulk-input"
+            v-model="bulkDraft"
+            class="bulk-input"
+            type="text"
+            autocomplete="off"
+            :placeholder="runningChecked.length ? `${runningChecked.length}개 세션에 지시` : '세션을 선택하세요'"
+            :disabled="!runningChecked.length"
+          />
+          <button class="send" type="submit" :disabled="!runningChecked.length || !bulkDraft.trim()">모두에게 보내기</button>
+        </div>
+        <div class="bulk-quick" role="group" aria-label="퀵 액션">
+          <button
+            v-for="qa in DEFAULT_QUICK_ACTIONS"
+            :key="qa.label"
+            class="chip"
+            type="button"
+            :disabled="!runningChecked.length"
+            :title="qa.prompt"
+            @click="sendBulk(qa.prompt)"
+          >
+            {{ qa.label }}
+          </button>
+        </div>
+      </form>
+    </Transition>
 
     <ol v-if="cmd.sessionList.value.length" ref="listEl" class="list">
       <li v-for="item in cmd.sessionList.value" :key="item.project.id">
@@ -17,6 +58,9 @@
           :usage="usageById[item.project.id]"
           :selected="cmd.selectedId.value === item.project.id"
           :hog-threshold="hogThreshold"
+          :bulk="bulkMode"
+          :checked="checkedIds.includes(item.project.id)"
+          @check="toggleChecked(item.project.id)"
           @select="select(item.project.id)"
           @open="cmd.openTerminal(item.project.id)"
         />
@@ -34,16 +78,22 @@
 </template>
 
 <script setup lang="ts">
+import { DEFAULT_QUICK_ACTIONS } from '@claudeboard/shared'
 import SessionStrip from './SessionStrip.vue'
 
 /** 세션 스트립 묶음. ↑/↓ 로 스트립 사이를 이동하고 t 로 터미널, / 로 프롬프트에 포커스한다. */
 const emit = defineEmits<{ add: [] }>()
 
 const cmd = useCommander()
+const notify = useNotify()
 
 // v-for 의 ref 배열은 순서가 보장되지 않으므로 프로젝트 id 로 보관
 const strips = new Map<string, InstanceType<typeof SessionStrip>>()
 const listEl = ref<HTMLOListElement>()
+// 일괄 지시: 체크한 세션 id 와 보낼 문구
+const bulkMode = ref(false)
+const checkedIds = ref<string[]>([])
+const bulkDraft = ref('')
 
 const usageById = computed(() => {
   const map: Record<string, NonNullable<typeof cmd.usage.value>['projects'][number]> = {}
@@ -51,10 +101,45 @@ const usageById = computed(() => {
   return map
 })
 const hogThreshold = computed(() => (cmd.demo.value ? 300_000 : 400_000))
+// 삭제된 프로젝트가 남아 있어도 세지 않도록 현재 목록과 교차한다
+const checkedItems = computed(() => cmd.sessionList.value.filter((x) => checkedIds.value.includes(x.project.id)))
+const checkedCount = computed(() => checkedItems.value.length)
+const runningChecked = computed(() => checkedItems.value.filter((x) => x.session?.process === 'running'))
 
 const setStrip = (id: string, el: unknown): void => {
   if (el) strips.set(id, el as InstanceType<typeof SessionStrip>)
   else strips.delete(id)
+}
+
+const toggleBulk = (): void => {
+  bulkMode.value = !bulkMode.value
+  if (!bulkMode.value) {
+    checkedIds.value = []
+    bulkDraft.value = ''
+  }
+}
+
+const toggleChecked = (id: string): void => {
+  checkedIds.value = checkedIds.value.includes(id) ? checkedIds.value.filter((x) => x !== id) : [...checkedIds.value, id]
+}
+
+const checkAllRunning = (): void => {
+  checkedIds.value = cmd.sessionList.value.filter((x) => x.session?.process === 'running').map((x) => x.project.id)
+}
+
+/** 체크한 세션 중 실행 중인 것에만 같은 지시를 보낸다. 꺼진 세션은 건너뛴다 */
+const sendBulk = (text: string): void => {
+  const t = text.trim()
+  const targets = runningChecked.value
+  if (!t || !targets.length) return
+  for (const x of targets) cmd.prompt(x.project.id, t)
+  const skipped = checkedCount.value - targets.length
+  notify.toast({
+    level: 'info',
+    title: `${targets.length}개 세션에 지시를 보냈습니다`,
+    body: skipped ? `꺼져 있는 ${skipped}개 세션은 건너뛰었습니다` : undefined
+  })
+  bulkDraft.value = ''
 }
 
 const select = (id: string): void => {
@@ -152,6 +237,153 @@ defineExpose({
     background: var(--text);
     color: var(--ink-0);
   }
+}
+
+.bulk-toggle {
+  @include pressable;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  &:hover {
+    color: var(--text);
+    border-color: var(--text-3);
+  }
+  &[aria-pressed='true'] {
+    border-color: transparent;
+    background: var(--text);
+    color: var(--ink-0);
+  }
+}
+
+.bulk {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-md);
+  background: var(--ink-1);
+  box-shadow: 0 1px 2px var(--shadow-soft);
+}
+.bulk-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+.bulk-count {
+  margin: 0 auto 0 0;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  strong {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+}
+.link {
+  @include pressable;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-2);
+  &:hover:not(:disabled) {
+    color: var(--text);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+.bulk-row {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+.bulk-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background: var(--ink-0);
+  font-size: var(--fs-md);
+  transition: border-color var(--dur-fast) var(--ease-out);
+  @media (max-width: $bp-mid) {
+    font-size: 16px;
+  }
+  &::placeholder {
+    color: var(--text-3);
+  }
+  &:focus-visible {
+    outline: none;
+    border-color: var(--focus);
+  }
+  &:disabled {
+    opacity: 0.55;
+  }
+}
+.send {
+  @include pressable;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--text);
+  color: var(--ink-0);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--text) 82%, var(--ink-1));
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+.bulk-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  @include pressable;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: transparent;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  &:hover:not(:disabled) {
+    border-color: var(--text-3);
+    color: var(--text);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+.bulk-enter-active,
+.bulk-leave-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+.bulk-enter-from,
+.bulk-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .list {

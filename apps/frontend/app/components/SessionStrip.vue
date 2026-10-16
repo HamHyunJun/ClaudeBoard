@@ -1,13 +1,22 @@
 <template>
   <article
     class="strip"
-    :class="[running ? STATUS_CLASS[status] : 'offline', { selected, hot, done: unseenDone }]"
+    :class="[running ? STATUS_CLASS[status] : 'offline', { selected, hot, done: unseenDone, picking: bulk }]"
     :aria-labelledby="nameId"
     :data-project="project.id"
     @click="onBoxClick($event, 'select')"
     @dblclick="onBoxClick($event, 'open')"
   >
     <span class="rail" aria-hidden="true" />
+
+    <input
+      v-if="bulk"
+      class="pick"
+      type="checkbox"
+      :checked="checked"
+      :aria-label="`${project.name} 일괄 지시 대상으로 선택`"
+      @change="emit('check')"
+    />
 
     <div class="main">
       <button
@@ -154,8 +163,11 @@ const props = defineProps<{
   usage?: DeepReadonly<ProjectUsage>
   selected: boolean
   hogThreshold: number
+  /** 일괄 지시 모드: 체크박스를 보여준다 */
+  bulk?: boolean
+  checked?: boolean
 }>()
-const emit = defineEmits<{ select: []; open: [] }>()
+const emit = defineEmits<{ select: []; open: []; check: [] }>()
 
 const cmd = useCommander()
 const now = useNow()
@@ -335,11 +347,35 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   }
 }
 
+.pick {
+  position: absolute;
+  top: 19px;
+  left: 17px;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--focus);
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+  &:active {
+    transform: scale(0.88);
+  }
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
 .rail {
   grid-row: 1 / span 2;
   border-radius: var(--r-md) 0 0 var(--r-md);
   background: var(--c);
   transition: background-color var(--dur) var(--ease-out);
+}
+
+.picking .main {
+  // 체크박스가 들어갈 자리. 일괄 지시 모드에서만 늘어난다
+  padding-left: 48px;
 }
 
 .main {
