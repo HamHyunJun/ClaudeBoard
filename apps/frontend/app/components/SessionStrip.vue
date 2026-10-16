@@ -1,149 +1,22 @@
-<script setup lang="ts">
-import type { GitRepoState, ProjectConfig, ProjectUsage, SessionSnapshot } from '@claudeboard/shared'
-import { DEFAULT_QUICK_ACTIONS } from '@claudeboard/shared'
-import type { DeepReadonly } from 'vue'
-
-/**
- * 관제탑의 "비행 진행 스트립" 한 장 = Claude Code 세션 하나.
- * 왼쪽 상태 레일, 이름·경로, 상태, 워크플로우 트랙, 토큰, 동작이 한 줄에 놓이고
- * 선택하면 프롬프트 입력과 퀵 액션이 아래로 펼쳐진다.
- */
-const props = defineProps<{
-  project: DeepReadonly<ProjectConfig>
-  session?: DeepReadonly<SessionSnapshot>
-  usage?: DeepReadonly<ProjectUsage>
-  selected: boolean
-  hogThreshold: number
-}>()
-const emit = defineEmits<{ select: []; open: [] }>()
-
-const cmd = useCommander()
-const now = useNow()
-const draft = ref('')
-const promptInput = ref<HTMLInputElement>()
-
-const running = computed(() => props.session?.process === 'running' || props.session?.process === 'starting')
-const status = computed(() => props.session?.status ?? 'IDLE')
-// 명령을 내려 끝난 뒤 아직 확인하지 않은 대기. 명령 없이 그냥 대기 중인 세션과 구분한다
-const unseenDone = computed(() => {
-  const at = props.session?.finishedAt
-  return !!at && running.value && status.value === 'IDLE' && at > (cmd.seenDoneAt.value[props.project.id] ?? 0)
-})
-const statusLabel = computed(() => {
-  const p = props.session?.process
-  if (!p || p === 'stopped') return '꺼짐'
-  if (p === 'starting') return '시작 중'
-  if (p === 'exited') return '종료됨'
-  if (p === 'error') return '실행 실패'
-  return unseenDone.value ? '완료 · 확인 대기' : STATUS_LABEL[status.value]
-})
-const elapsed = computed(() => (props.session && running.value ? formatElapsed(now.value - props.session.statusSince) : ''))
-const hot = computed(() => (props.usage?.last5m ?? 0) >= props.hogThreshold)
-const quickActions = computed(() => props.project.quickActions?.length ? props.project.quickActions : DEFAULT_QUICK_ACTIONS)
-const nameId = computed(() => `strip-${props.project.id}`)
-const detailId = computed(() => `strip-detail-${props.project.id}`)
-
-// 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
-const confirmRemove = ref(false)
-let confirmTimer: ReturnType<typeof setTimeout> | undefined
-async function removeSession() {
-  if (!confirmRemove.value) {
-    confirmRemove.value = true
-    confirmTimer = setTimeout(() => (confirmRemove.value = false), 3000)
-    return
-  }
-  clearTimeout(confirmTimer)
-  confirmRemove.value = false
-  menuEl.value?.hidePopover()
-  try {
-    await cmd.removeProject(props.project.id)
-  } catch (err) {
-    useNotify().toast({ level: 'warning', title: (err as Error).message })
-  }
-}
-onBeforeUnmount(() => clearTimeout(confirmTimer))
-
-// 박스의 빈 곳을 눌러도 이름을 누른 것과 같게 동작한다 (버튼·입력 등 자체 동작이 있는 요소는 제외)
-function onBoxClick(e: MouseEvent, action: 'select' | 'open') {
-  if ((e.target as HTMLElement).closest('button, input, a, form, [role=group], [role=menu]')) return
-  if (action === 'select') emit('select')
-  else emit('open')
-}
-
-// 더보기 메뉴: 팝오버(최상위 레이어)라 펼침 영역의 overflow 에 잘리지 않는다. 위치는 버튼 기준으로 직접 잡는다
-const moreBtn = ref<HTMLButtonElement>()
-const menuEl = ref<HTMLElement>()
-const menuOpen = ref(false)
-const menuId = computed(() => `strip-menu-${props.project.id}`)
-function toggleMenu() {
-  const menu = menuEl.value
-  const btn = moreBtn.value
-  if (!menu || !btn) return
-  if (menu.matches(':popover-open')) return menu.hidePopover()
-  menu.showPopover()
-  const r = btn.getBoundingClientRect()
-  const { width, height } = menu.getBoundingClientRect()
-  const below = r.bottom + 6 + height <= window.innerHeight
-  menu.style.left = `${Math.max(8, r.right - width)}px`
-  menu.style.top = `${below ? r.bottom + 6 : r.top - 6 - height}px`
-  menu.querySelector<HTMLElement>('[role=menuitem]')?.focus()
-}
-function onMenuToggle(e: Event) {
-  menuOpen.value = (e as ToggleEvent).newState === 'open'
-  if (!menuOpen.value) confirmRemove.value = false
-}
-function onMenuKeydown(e: KeyboardEvent) {
-  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
-  e.preventDefault()
-  e.stopPropagation() // 랙의 세션 간 이동 단축키와 겹치지 않게
-  const items = [...(menuEl.value?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? [])]
-  const i = items.indexOf(document.activeElement as HTMLElement)
-  items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
-}
-function act(fn: () => unknown) {
-  menuEl.value?.hidePopover()
-  fn()
-}
-
-function move(to: 'up' | 'down' | 'top') {
-  cmd.moveProject(props.project.id, to).catch((err: Error) =>
-    useNotify().toast({ level: 'warning', title: err.message })
-  )
-}
-
-function send(text: string) {
-  const t = text.trim()
-  if (!t) return
-  cmd.prompt(props.project.id, t)
-  draft.value = ''
-}
-
-// 터미널 출력 앞의 장식 기호(⏺ ● ⎿ > 등)는 대시보드에서 의미가 없으므로 걷어낸다
-const activity = computed(() => props.session?.lastLine?.replace(/^[\s⏺●○⎿✻✢✶·>│┃*-]+/u, '').trim() || undefined)
-
-const GIT_CHANGES = [
-  { key: 'staged', sym: '+', label: '스테이징됨', cls: 'ok' },
-  { key: 'modified', sym: '±', label: '수정됨', cls: 'warn' },
-  { key: 'untracked', sym: '●', label: '추적 안 됨', cls: 'info' },
-  { key: 'ahead', sym: '↑', label: '푸시 안 한 커밋', cls: 'info' },
-  { key: 'behind', sym: '↓', label: '받아야 할 커밋', cls: 'warn' }
-] as const
-const gitCounts = (g: GitRepoState) =>
-  GIT_CHANGES.filter((c) => g[c.key] > 0).map((c) => ({ ...c, n: g[c.key] }))
-
-defineExpose({ focusPrompt: () => promptInput.value?.focus() })
-</script>
-
 <template>
   <article
     class="strip"
-    :class="[running ? STATUS_CLASS[status] : 'offline', { selected, hot, done: unseenDone }]"
+    :class="[running ? STATUS_CLASS[status] : 'offline', { selected, hot, done: unseenDone, picking: bulk }]"
     :aria-labelledby="nameId"
     :data-project="project.id"
     @click="onBoxClick($event, 'select')"
     @dblclick="onBoxClick($event, 'open')"
   >
     <span class="rail" aria-hidden="true" />
+
+    <input
+      v-if="bulk"
+      class="pick"
+      type="checkbox"
+      :checked="checked"
+      :aria-label="`${project.name} 일괄 지시 대상으로 선택`"
+      @change="emit('check')"
+    />
 
     <div class="main">
       <button
@@ -164,6 +37,7 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
         <span class="state-label">{{ statusLabel }}</span>
         <span v-if="session?.activeTool && running && status !== 'IDLE'" class="tool">{{ session.activeTool }}</span>
         <span v-if="elapsed" class="elapsed">{{ elapsed }}</span>
+        <span v-if="modelName" class="model" :title="usage?.model" :aria-label="`모델 ${modelName}`">{{ modelName }}</span>
         <ul v-if="session?.git?.length" class="git" aria-label="git 상태">
           <li v-for="g in session.git" :key="g.branch" class="repo">
             <span class="branch" :title="g.branch">{{ g.branch }}</span>
@@ -274,6 +148,150 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   </article>
 </template>
 
+<script setup lang="ts">
+import type { GitRepoState, ProjectConfig, ProjectUsage, SessionSnapshot } from '@claudeboard/shared'
+import { DEFAULT_QUICK_ACTIONS } from '@claudeboard/shared'
+import type { DeepReadonly } from 'vue'
+
+/**
+ * 관제탑의 "비행 진행 스트립" 한 장 = Claude Code 세션 하나.
+ * 왼쪽 상태 레일, 이름·경로, 상태, 워크플로우 트랙, 토큰, 동작이 한 줄에 놓이고
+ * 선택하면 프롬프트 입력과 퀵 액션이 아래로 펼쳐진다.
+ */
+const props = defineProps<{
+  project: DeepReadonly<ProjectConfig>
+  session?: DeepReadonly<SessionSnapshot>
+  usage?: DeepReadonly<ProjectUsage>
+  selected: boolean
+  hogThreshold: number
+  /** 일괄 지시 모드: 체크박스를 보여준다 */
+  bulk?: boolean
+  checked?: boolean
+}>()
+const emit = defineEmits<{ select: []; open: []; check: [] }>()
+
+const cmd = useCommander()
+const now = useNow()
+
+const draft = ref('')
+const promptInput = ref<HTMLInputElement>()
+
+// 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
+const confirmRemove = ref(false)
+let confirmTimer: ReturnType<typeof setTimeout> | undefined
+
+// 더보기 메뉴: 팝오버(최상위 레이어)라 펼침 영역의 overflow 에 잘리지 않는다. 위치는 버튼 기준으로 직접 잡는다
+const moreBtn = ref<HTMLButtonElement>()
+const menuEl = ref<HTMLElement>()
+const menuOpen = ref(false)
+
+const GIT_CHANGES = [
+  { key: 'staged', sym: '+', label: '스테이징됨', cls: 'ok' },
+  { key: 'modified', sym: '±', label: '수정됨', cls: 'warn' },
+  { key: 'untracked', sym: '●', label: '추적 안 됨', cls: 'info' },
+  { key: 'ahead', sym: '↑', label: '푸시 안 한 커밋', cls: 'info' },
+  { key: 'behind', sym: '↓', label: '받아야 할 커밋', cls: 'warn' }
+] as const
+
+onBeforeUnmount(() => clearTimeout(confirmTimer))
+
+const running = computed(() => props.session?.process === 'running' || props.session?.process === 'starting')
+const status = computed(() => props.session?.status ?? 'IDLE')
+// 명령을 내려 끝난 뒤 아직 확인하지 않은 대기. 명령 없이 그냥 대기 중인 세션과 구분한다
+const unseenDone = computed(() => {
+  const at = props.session?.finishedAt
+  return !!at && running.value && status.value === 'IDLE' && at > (cmd.seenDoneAt.value[props.project.id] ?? 0)
+})
+const statusLabel = computed(() => {
+  const p = props.session?.process
+  if (!p || p === 'stopped') return '꺼짐'
+  if (p === 'starting') return '시작 중'
+  if (p === 'exited') return '종료됨'
+  if (p === 'error') return '실행 실패'
+  return unseenDone.value ? '완료 · 확인 대기' : STATUS_LABEL[status.value]
+})
+// 꺼진 세션의 오래된 로그 모델은 보여주지 않는다
+const modelName = computed(() => (running.value && props.usage?.model ? formatModel(props.usage.model) : ''))
+const elapsed = computed(() => (props.session && running.value ? formatElapsed(now.value - props.session.statusSince) : ''))
+const hot = computed(() => (props.usage?.last5m ?? 0) >= props.hogThreshold)
+const quickActions = computed(() => props.project.quickActions?.length ? props.project.quickActions : DEFAULT_QUICK_ACTIONS)
+const nameId = computed(() => `strip-${props.project.id}`)
+const detailId = computed(() => `strip-detail-${props.project.id}`)
+const menuId = computed(() => `strip-menu-${props.project.id}`)
+
+// 터미널 출력 앞의 장식 기호(⏺ ● ⎿ > 등)는 대시보드에서 의미가 없으므로 걷어낸다
+const activity = computed(() => props.session?.lastLine?.replace(/^[\s⏺●○⎿✻✢✶·>│┃*-]+/u, '').trim() || undefined)
+
+const removeSession = async (): Promise<void> => {
+  if (!confirmRemove.value) {
+    confirmRemove.value = true
+    confirmTimer = setTimeout(() => (confirmRemove.value = false), 3000)
+    return
+  }
+  clearTimeout(confirmTimer)
+  confirmRemove.value = false
+  menuEl.value?.hidePopover()
+  try {
+    await cmd.removeProject(props.project.id)
+  } catch (err) {
+    useNotify().toast({ level: 'warning', title: (err as Error).message })
+  }
+}
+
+// 박스의 빈 곳을 눌러도 이름을 누른 것과 같게 동작한다 (버튼·입력 등 자체 동작이 있는 요소는 제외)
+const onBoxClick = (e: MouseEvent, action: 'select' | 'open'): void => {
+  if ((e.target as HTMLElement).closest('button, input, a, form, [role=group], [role=menu]')) return
+  if (action === 'select') emit('select')
+  else emit('open')
+}
+const toggleMenu = (): void => {
+  const menu = menuEl.value
+  const btn = moreBtn.value
+  if (!menu || !btn) return
+  if (menu.matches(':popover-open')) return menu.hidePopover()
+  menu.showPopover()
+  const r = btn.getBoundingClientRect()
+  const { width, height } = menu.getBoundingClientRect()
+  const below = r.bottom + 6 + height <= window.innerHeight
+  menu.style.left = `${Math.max(8, r.right - width)}px`
+  menu.style.top = `${below ? r.bottom + 6 : r.top - 6 - height}px`
+  menu.querySelector<HTMLElement>('[role=menuitem]')?.focus()
+}
+const onMenuToggle = (e: Event): void => {
+  menuOpen.value = (e as ToggleEvent).newState === 'open'
+  if (!menuOpen.value) confirmRemove.value = false
+}
+const onMenuKeydown = (e: KeyboardEvent): void => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+  e.preventDefault()
+  e.stopPropagation() // 랙의 세션 간 이동 단축키와 겹치지 않게
+  const items = [...(menuEl.value?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? [])]
+  const i = items.indexOf(document.activeElement as HTMLElement)
+  items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
+}
+const act = (fn: () => unknown): void => {
+  menuEl.value?.hidePopover()
+  fn()
+}
+
+const move = (to: 'up' | 'down' | 'top'): void => {
+  cmd.moveProject(props.project.id, to).catch((err: Error) =>
+    useNotify().toast({ level: 'warning', title: err.message })
+  )
+}
+
+const send = (text: string): void => {
+  const t = text.trim()
+  if (!t) return
+  cmd.prompt(props.project.id, t)
+  draft.value = ''
+}
+const gitCounts = (g: GitRepoState): Array<(typeof GIT_CHANGES)[number] & { n: number }> =>
+  GIT_CHANGES.filter((c) => g[c.key] > 0).map((c) => ({ ...c, n: g[c.key] }))
+
+defineExpose({ focusPrompt: () => promptInput.value?.focus() })
+</script>
+
 <style scoped lang="scss">
 .strip {
   --c: var(--idle);
@@ -332,11 +350,35 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   }
 }
 
+.pick {
+  position: absolute;
+  top: 19px;
+  left: 17px;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--focus);
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+  &:active {
+    transform: scale(0.88);
+  }
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
 .rail {
   grid-row: 1 / span 2;
   border-radius: var(--r-md) 0 0 var(--r-md);
   background: var(--c);
   transition: background-color var(--dur) var(--ease-out);
+}
+
+.picking .main {
+  // 체크박스가 들어갈 자리. 일괄 지시 모드에서만 늘어난다
+  padding-left: 48px;
 }
 
 .main {
@@ -400,6 +442,15 @@ defineExpose({ focusPrompt: () => promptInput.value?.focus() })
   .offline & {
     color: var(--text-3);
   }
+}
+.model {
+  padding: 0 7px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-2);
 }
 .tool {
   padding: 1px 8px;

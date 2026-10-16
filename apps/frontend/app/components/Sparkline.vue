@@ -1,9 +1,3 @@
-<script setup lang="ts">
-/** 분 단위 토큰 사용량 미니 막대 (최근 30분) */
-const props = defineProps<{ values: readonly number[]; hot?: boolean; label: string }>()
-const max = computed(() => Math.max(1, ...props.values))
-</script>
-
 <template>
   <svg class="spark" :class="{ hot }" viewBox="0 0 60 16" preserveAspectRatio="none" role="img" :aria-label="label">
     <rect
@@ -16,6 +10,12 @@ const max = computed(() => Math.max(1, ...props.values))
     />
   </svg>
 </template>
+
+<script setup lang="ts">
+/** 분 단위 토큰 사용량 미니 막대 (최근 30분) */
+const props = defineProps<{ values: readonly number[]; hot?: boolean; label: string }>()
+const max = computed(() => Math.max(1, ...props.values))
+</script>
 
 <style scoped lang="scss">
 .spark {

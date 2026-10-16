@@ -1,43 +1,3 @@
-<script setup lang="ts">
-/** 토큰·비용·할당량·리셋 카운트다운·프로젝트별 순위를 모은 왼쪽 계기판 */
-const cmd = useCommander()
-const now = useNow()
-const u = computed(() => cmd.usage.value)
-
-const breakdown = computed(() => {
-  const t = u.value?.today
-  if (!t) return []
-  const total = Math.max(1, t.input + t.output + t.cacheWrite + t.cacheRead)
-  return [
-    { key: 'cacheRead', label: '캐시 읽기', value: t.cacheRead, share: t.cacheRead / total },
-    { key: 'input', label: '입력', value: t.input, share: t.input / total },
-    { key: 'cacheWrite', label: '캐시 쓰기', value: t.cacheWrite, share: t.cacheWrite / total },
-    { key: 'output', label: '출력', value: t.output, share: t.output / total }
-  ]
-})
-
-// Claude 가 알려준 실측값. 조회 불가일 때만 로컬 로그 추정치로 돌아간다
-const official = computed(() => u.value?.official)
-const live = computed(() => !!official.value && official.value.status !== 'unavailable')
-const fiveHour = computed(() => (live.value ? official.value?.fiveHour : null) ?? null)
-const sevenDay = computed(() => (live.value ? official.value?.sevenDay : null) ?? null)
-
-const resetIn = computed(() => {
-  const r = live.value ? fiveHour.value?.resetsAt : u.value?.rateWindow.resetsAt
-  return r && r > now.value ? r - now.value : null
-})
-// 리셋 시각이 지났으면 새 창이 열리기 전이므로 0%
-const fiveHourPercent = computed(() => (resetIn.value === null ? 0 : (fiveHour.value?.percent ?? 0)))
-const weekResetsAt = computed(() => sevenDay.value?.resetsAt)
-
-const nameOf = (id: string | null, cwd: string) =>
-  (id && cmd.projects.value.find((p) => p.id === id)?.name) || shortPath(cwd)
-const topProjects = computed(() => (u.value?.projects ?? []).slice(0, 6))
-const projectTotal = (p: { today: { input: number; output: number; cacheWrite: number; cacheRead: number } }) =>
-  p.today.input + p.today.output + p.today.cacheWrite + p.today.cacheRead
-const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTotal)))
-</script>
-
 <template>
   <aside class="rail" aria-labelledby="usage-title">
     <h2 id="usage-title" class="sr-only">토큰 사용량과 한도</h2>
@@ -107,6 +67,47 @@ const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTo
     <p v-if="!live" class="note">추정 한도는 백엔드 환경 변수(CLAUDEBOARD_*_TOKENS)로 조정합니다.</p>
   </aside>
 </template>
+
+<script setup lang="ts">
+/** 토큰·비용·할당량·리셋 카운트다운·프로젝트별 순위를 모은 왼쪽 계기판 */
+const cmd = useCommander()
+const now = useNow()
+
+const u = computed(() => cmd.usage.value)
+
+const breakdown = computed(() => {
+  const t = u.value?.today
+  if (!t) return []
+  const total = Math.max(1, t.input + t.output + t.cacheWrite + t.cacheRead)
+  return [
+    { key: 'cacheRead', label: '캐시 읽기', value: t.cacheRead, share: t.cacheRead / total },
+    { key: 'input', label: '입력', value: t.input, share: t.input / total },
+    { key: 'cacheWrite', label: '캐시 쓰기', value: t.cacheWrite, share: t.cacheWrite / total },
+    { key: 'output', label: '출력', value: t.output, share: t.output / total }
+  ]
+})
+
+// Claude 가 알려준 실측값. 조회 불가일 때만 로컬 로그 추정치로 돌아간다
+const official = computed(() => u.value?.official)
+const live = computed(() => !!official.value && official.value.status !== 'unavailable')
+const fiveHour = computed(() => (live.value ? official.value?.fiveHour : null) ?? null)
+const sevenDay = computed(() => (live.value ? official.value?.sevenDay : null) ?? null)
+
+const resetIn = computed(() => {
+  const r = live.value ? fiveHour.value?.resetsAt : u.value?.rateWindow.resetsAt
+  return r && r > now.value ? r - now.value : null
+})
+// 리셋 시각이 지났으면 새 창이 열리기 전이므로 0%
+const fiveHourPercent = computed(() => (resetIn.value === null ? 0 : (fiveHour.value?.percent ?? 0)))
+const weekResetsAt = computed(() => sevenDay.value?.resetsAt)
+const topProjects = computed(() => (u.value?.projects ?? []).slice(0, 6))
+const maxProject = computed(() => Math.max(1, ...topProjects.value.map(projectTotal)))
+
+const nameOf = (id: string | null, cwd: string): string =>
+  (id && cmd.projects.value.find((p) => p.id === id)?.name) || shortPath(cwd)
+const projectTotal = (p: { today: { input: number; output: number; cacheWrite: number; cacheRead: number } }): number =>
+  p.today.input + p.today.output + p.today.cacheWrite + p.today.cacheRead
+</script>
 
 <style scoped lang="scss">
 .rail {

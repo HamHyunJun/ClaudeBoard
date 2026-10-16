@@ -1,41 +1,3 @@
-<script setup lang="ts">
-/**
- * 선택한 세션의 실시간 터미널과 이벤트 기록을 탭으로 보여주는 오른쪽 패널.
- * 탭 표시줄은 스프링으로 미끄러지며 이동한다.
- */
-const cmd = useCommander()
-const now = useNow()
-const tab = ref<'terminal' | 'events'>('terminal')
-const tabs = [
-  { id: 'terminal', label: '터미널' },
-  { id: 'events', label: '이벤트' }
-] as const
-const tabEls = ref<Record<string, HTMLButtonElement>>({})
-const indicator = ref({ x: 0, w: 0 })
-const xterm = ref<{ focus: () => void }>()
-
-const item = computed(() => cmd.terminalTarget.value)
-const session = computed(() => item.value?.session)
-const running = computed(() => session.value?.process === 'running' || session.value?.process === 'starting')
-const events = computed(() => cmd.alerts.value.filter((a) => a.projectId === item.value?.project.id))
-
-function moveIndicator() {
-  const el = tabEls.value[tab.value]
-  if (el) indicator.value = { x: el.offsetLeft, w: el.offsetWidth }
-}
-watch(tab, () => nextTick(moveIndicator))
-onMounted(() => nextTick(moveIndicator))
-
-function onTabKey(e: KeyboardEvent) {
-  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
-  e.preventDefault()
-  tab.value = tab.value === 'terminal' ? 'events' : 'terminal'
-  nextTick(() => tabEls.value[tab.value]?.focus())
-}
-
-defineExpose({ focus: () => xterm.value?.focus() })
-</script>
-
 <template>
   <section v-if="item" class="panel" :aria-label="`${item.project.name} 터미널`">
     <header class="head">
@@ -100,6 +62,47 @@ defineExpose({ focus: () => xterm.value?.focus() })
     </footer>
   </section>
 </template>
+
+<script setup lang="ts">
+/**
+ * 선택한 세션의 실시간 터미널과 이벤트 기록을 탭으로 보여주는 오른쪽 패널.
+ * 탭 표시줄은 스프링으로 미끄러지며 이동한다.
+ */
+const cmd = useCommander()
+const now = useNow()
+
+const tab = ref<'terminal' | 'events'>('terminal')
+const tabs = [
+  { id: 'terminal', label: '터미널' },
+  { id: 'events', label: '이벤트' }
+] as const
+const tabEls = ref<Record<string, HTMLButtonElement>>({})
+const indicator = ref({ x: 0, w: 0 })
+const xterm = ref<{ focus: () => void }>()
+
+onMounted(() => nextTick(moveIndicator))
+
+const item = computed(() => cmd.terminalTarget.value)
+const session = computed(() => item.value?.session)
+const running = computed(() => session.value?.process === 'running' || session.value?.process === 'starting')
+const events = computed(() => cmd.alerts.value.filter((a) => a.projectId === item.value?.project.id))
+
+const moveIndicator = (): void => {
+  const el = tabEls.value[tab.value]
+  if (el) indicator.value = { x: el.offsetLeft, w: el.offsetWidth }
+}
+
+const onTabKey = (e: KeyboardEvent): void => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  e.preventDefault()
+  tab.value = tab.value === 'terminal' ? 'events' : 'terminal'
+  nextTick(() => tabEls.value[tab.value]?.focus())
+}
+
+defineExpose({ focus: () => xterm.value?.focus() })
+
+watch(tab, () => nextTick(moveIndicator))
+</script>
 
 <style scoped lang="scss">
 .panel {

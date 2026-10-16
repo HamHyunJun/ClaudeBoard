@@ -58,7 +58,7 @@ export class ProjectStore {
   }
 
   /** ids 순서대로 앞에 배치하고, 빠진 프로젝트는 기존 순서를 유지한 채 뒤에 붙인다 */
-  reorder(ids: string[]) {
+  reorder(ids: string[]): void {
     const byId = new Map(this.projects.map((p) => [p.id, p]))
     const head = [...new Set(ids)].flatMap((id) => byId.get(id) ?? [])
     const rest = this.projects.filter((p) => !head.includes(p))
@@ -67,7 +67,7 @@ export class ProjectStore {
   }
 
   /** 원자적 저장: 임시 파일에 쓰고 rename */
-  private save() {
+  private save(): void {
     const tmp = `${this.file}.tmp`
     writeFileSync(tmp, JSON.stringify(this.projects, null, 2))
     renameSync(tmp, this.file)

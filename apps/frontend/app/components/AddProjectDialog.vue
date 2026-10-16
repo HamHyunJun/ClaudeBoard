@@ -1,84 +1,3 @@
-<script setup lang="ts">
-/** 로컬 디렉터리를 관제 대상 프로젝트로 등록한다 */
-import type { DirListing } from '@claudeboard/shared'
-
-const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ close: [] }>()
-const cmd = useCommander()
-const { toast } = useNotify()
-
-const form = reactive({ name: '', cwd: '', command: '', autoStart: true })
-const error = ref('')
-const saving = ref(false)
-
-// 폴더 찾아보기: 백엔드가 실행 중인 컴퓨터의 디렉터리를 한 단계씩 연다
-const browsing = ref(false)
-const listing = ref<DirListing | null>(null)
-const browseError = ref('')
-const listEl = ref<HTMLElement | null>(null)
-
-async function browse(path?: string) {
-  browseError.value = ''
-  try {
-    listing.value = await cmd.listDirs(path)
-    await nextTick()
-    listEl.value?.scrollTo({ top: 0 })
-  } catch (e) {
-    browseError.value = (e as Error).message
-  }
-}
-
-function toggleBrowse() {
-  browsing.value = !browsing.value
-  if (browsing.value) browse(form.cwd.trim() || undefined)
-}
-
-function pick() {
-  if (!listing.value) return
-  form.cwd = listing.value.path
-  browsing.value = false
-  error.value = ''
-}
-
-watch(
-  () => props.open,
-  (o) => {
-    if (o) {
-      Object.assign(form, { name: '', cwd: '', command: '', autoStart: true })
-      error.value = ''
-      browsing.value = false
-      listing.value = null
-      browseError.value = ''
-    }
-  }
-)
-
-async function submit() {
-  if (!form.cwd.trim()) {
-    error.value = '프로젝트 경로를 입력하세요.'
-    return
-  }
-  saving.value = true
-  error.value = ''
-  try {
-    const p = await cmd.addProject({
-      name: form.name.trim(),
-      cwd: form.cwd.trim(),
-      command: form.command.trim() || undefined,
-      autoStart: form.autoStart
-    })
-    if (form.autoStart) cmd.start(p.id)
-    cmd.selectedId.value = p.id
-    toast({ level: 'info', title: `${p.name} 프로젝트를 추가했습니다` }, 3000)
-    emit('close')
-  } catch (e) {
-    error.value = (e as Error).message
-  } finally {
-    saving.value = false
-  }
-}
-</script>
-
 <template>
   <BaseDialog :open="open" labelledby="add-title" @close="emit('close')">
     <form class="form" novalidate @submit.prevent="submit">
@@ -146,6 +65,88 @@ async function submit() {
     </form>
   </BaseDialog>
 </template>
+
+<script setup lang="ts">
+/** 로컬 디렉터리를 관제 대상 프로젝트로 등록한다 */
+import type { DirListing } from '@claudeboard/shared'
+
+const props = defineProps<{ open: boolean }>()
+const emit = defineEmits<{ close: [] }>()
+
+const cmd = useCommander()
+const { toast } = useNotify()
+
+const form = reactive({ name: '', cwd: '', command: '', autoStart: true })
+const error = ref('')
+const saving = ref(false)
+
+// 폴더 찾아보기: 백엔드가 실행 중인 컴퓨터의 디렉터리를 한 단계씩 연다
+const browsing = ref(false)
+const listing = ref<DirListing | null>(null)
+const browseError = ref('')
+const listEl = ref<HTMLElement | null>(null)
+
+const browse = async (path?: string): Promise<void> => {
+  browseError.value = ''
+  try {
+    listing.value = await cmd.listDirs(path)
+    await nextTick()
+    listEl.value?.scrollTo({ top: 0 })
+  } catch (e) {
+    browseError.value = (e as Error).message
+  }
+}
+
+const toggleBrowse = (): void => {
+  browsing.value = !browsing.value
+  if (browsing.value) browse(form.cwd.trim() || undefined)
+}
+
+const pick = (): void => {
+  if (!listing.value) return
+  form.cwd = listing.value.path
+  browsing.value = false
+  error.value = ''
+}
+
+const submit = async (): Promise<void> => {
+  if (!form.cwd.trim()) {
+    error.value = '프로젝트 경로를 입력하세요.'
+    return
+  }
+  saving.value = true
+  error.value = ''
+  try {
+    const p = await cmd.addProject({
+      name: form.name.trim(),
+      cwd: form.cwd.trim(),
+      command: form.command.trim() || undefined,
+      autoStart: form.autoStart
+    })
+    if (form.autoStart) cmd.start(p.id)
+    cmd.selectedId.value = p.id
+    toast({ level: 'info', title: `${p.name} 프로젝트를 추가했습니다` }, 3000)
+    emit('close')
+  } catch (e) {
+    error.value = (e as Error).message
+  } finally {
+    saving.value = false
+  }
+}
+
+watch(
+  () => props.open,
+  (o) => {
+    if (o) {
+      Object.assign(form, { name: '', cwd: '', command: '', autoStart: true })
+      error.value = ''
+      browsing.value = false
+      listing.value = null
+      browseError.value = ''
+    }
+  }
+)
+</script>
 
 <style scoped lang="scss">
 .form {

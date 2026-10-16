@@ -116,6 +116,8 @@ export interface ProjectUsage {
   last5m: number
   /** 분 단위 스파크라인 (최근 30분, 오래된 것 → 최신) */
   sparkline: number[]
+  /** 이 프로젝트에서 가장 최근에 응답한 모델 ID (예: claude-opus-5-5). 로그에 없으면 생략 */
+  model?: string
 }
 
 /** Claude 가 직접 알려주는 한도 하나 (로컬 토큰 추정이 아님) */

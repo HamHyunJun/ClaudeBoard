@@ -1,24 +1,3 @@
-<script setup lang="ts">
-/**
- * 승인 대기 중인 세션을 화면 최상단에 띄우고 원클릭으로 승인·거절한다.
- * 버튼을 누르면 즉시 "보내는 중" 상태로 바꿔 중복 클릭을 막는다.
- */
-const cmd = useCommander()
-const now = useNow()
-const sent = ref<Record<string, 'yes' | 'no'>>({})
-
-function answer(id: string, decision: 'yes' | 'no') {
-  sent.value = { ...sent.value, [id]: decision }
-  cmd.approve(id, decision)
-}
-
-// 승인 요청이 사라지거나 질문이 바뀌면 보낸 상태를 초기화
-watch(
-  () => cmd.pendingApprovals.value.map((x) => `${x.project.id}:${x.session!.approval!.detectedAt}`).join('|'),
-  () => (sent.value = {})
-)
-</script>
-
 <template>
   <section class="banners" aria-live="assertive" aria-label="승인 대기">
     <TransitionGroup name="drop">
@@ -59,6 +38,27 @@ watch(
     </TransitionGroup>
   </section>
 </template>
+
+<script setup lang="ts">
+/**
+ * 승인 대기 중인 세션을 화면 최상단에 띄우고 원클릭으로 승인·거절한다.
+ * 버튼을 누르면 즉시 "보내는 중" 상태로 바꿔 중복 클릭을 막는다.
+ */
+const cmd = useCommander()
+const now = useNow()
+const sent = ref<Record<string, 'yes' | 'no'>>({})
+
+const answer = (id: string, decision: 'yes' | 'no'): void => {
+  sent.value = { ...sent.value, [id]: decision }
+  cmd.approve(id, decision)
+}
+
+// 승인 요청이 사라지거나 질문이 바뀌면 보낸 상태를 초기화
+watch(
+  () => cmd.pendingApprovals.value.map((x) => `${x.project.id}:${x.session!.approval!.detectedAt}`).join('|'),
+  () => (sent.value = {})
+)
+</script>
 
 <style scoped lang="scss">
 .banners {

@@ -1,9 +1,3 @@
-<script setup lang="ts">
-/** 오른쪽 아래 토스트. 스크린리더에는 polite 로 읽힌다. */
-const { toasts, dismiss } = useNotify()
-const cmd = useCommander()
-</script>
-
 <template>
   <div class="toasts" aria-live="polite" aria-relevant="additions">
     <TransitionGroup name="toast">
@@ -20,6 +14,12 @@ const cmd = useCommander()
     </TransitionGroup>
   </div>
 </template>
+
+<script setup lang="ts">
+/** 오른쪽 아래 토스트. 스크린리더에는 polite 로 읽힌다. */
+const { toasts, dismiss } = useNotify()
+const cmd = useCommander()
+</script>
 
 <style scoped lang="scss">
 .toasts {

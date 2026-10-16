@@ -1,54 +1,3 @@
-<script setup lang="ts">
-/** 프로젝트 폴더를 어떤 응용 프로그램으로 열지 확인받고 실행한다 */
-import { OPEN_APPS, type OpenAppId } from '@claudeboard/shared'
-
-const KEY = 'claudeboard:open-app'
-const cmd = useCommander()
-const { toast } = useNotify()
-
-const project = computed(() => cmd.projects.value.find((p) => p.id === cmd.openTargetId.value))
-const open = computed(() => !!project.value)
-const app = ref<OpenAppId>('vscode')
-const opening = ref(false)
-const error = ref('')
-
-watch(open, (o) => {
-  if (!o) return
-  error.value = ''
-  try {
-    const saved = localStorage.getItem(KEY)
-    if (OPEN_APPS.some((a) => a.id === saved)) app.value = saved as OpenAppId
-  } catch {
-    // 저장소를 못 읽으면 기본값 사용
-  }
-})
-
-function close() {
-  cmd.openTargetId.value = null
-}
-
-async function submit() {
-  const p = project.value
-  if (!p) return
-  opening.value = true
-  error.value = ''
-  try {
-    await cmd.openProject(p.id, app.value)
-    try {
-      localStorage.setItem(KEY, app.value)
-    } catch {
-      // 기억하지 못해도 열기는 성공
-    }
-    toast({ level: 'info', title: `${p.name} 폴더를 열었습니다` }, 3000)
-    close()
-  } catch (e) {
-    error.value = (e as Error).message
-  } finally {
-    opening.value = false
-  }
-}
-</script>
-
 <template>
   <BaseDialog :open="open" labelledby="open-title" @close="close">
     <form class="form" @submit.prevent="submit">
@@ -74,6 +23,58 @@ async function submit() {
     </form>
   </BaseDialog>
 </template>
+
+<script setup lang="ts">
+/** 프로젝트 폴더를 어떤 응용 프로그램으로 열지 확인받고 실행한다 */
+import { OPEN_APPS, type OpenAppId } from '@claudeboard/shared'
+
+const cmd = useCommander()
+const { toast } = useNotify()
+
+const KEY = 'claudeboard:open-app'
+const app = ref<OpenAppId>('vscode')
+const opening = ref(false)
+const error = ref('')
+
+const project = computed(() => cmd.projects.value.find((p) => p.id === cmd.openTargetId.value))
+const open = computed(() => !!project.value)
+
+const close = (): void => {
+  cmd.openTargetId.value = null
+}
+
+const submit = async (): Promise<void> => {
+  const p = project.value
+  if (!p) return
+  opening.value = true
+  error.value = ''
+  try {
+    await cmd.openProject(p.id, app.value)
+    try {
+      localStorage.setItem(KEY, app.value)
+    } catch {
+      // 기억하지 못해도 열기는 성공
+    }
+    toast({ level: 'info', title: `${p.name} 폴더를 열었습니다` }, 3000)
+    close()
+  } catch (e) {
+    error.value = (e as Error).message
+  } finally {
+    opening.value = false
+  }
+}
+
+watch(open, (o) => {
+  if (!o) return
+  error.value = ''
+  try {
+    const saved = localStorage.getItem(KEY)
+    if (OPEN_APPS.some((a) => a.id === saved)) app.value = saved as OpenAppId
+  } catch {
+    // 저장소를 못 읽으면 기본값 사용
+  }
+})
+</script>
 
 <style scoped lang="scss">
 .form {

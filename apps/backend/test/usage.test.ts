@@ -38,6 +38,17 @@ test('5시간 블록: 정시 내림 시작, 만료 후 비활성', () => {
   assert.equal(currentWindow([rec(base)], base + 6 * 3600_000, 5).resetsAt, null)
 })
 
+test('프로젝트별 최근 모델을 담고 가짜 모델명은 무시한다', () => {
+  const t = new UsageTracker(loadConfig())
+  t.setProjects([{ id: 'a', name: 'A', cwd: '/work/a' }])
+  const now = Date.now()
+  const tok = { input: 10, output: 0, cacheWrite: 0, cacheRead: 0 }
+  t.ingest({ at: now - 3 * 60_000, cwd: '/work/a', model: 'claude-sonnet-5-5', tokens: tok })
+  t.ingest({ at: now - 2 * 60_000, cwd: '/work/a', model: 'claude-opus-5-5', tokens: tok })
+  t.ingest({ at: now - 60_000, cwd: '/work/a', model: '<synthetic>', tokens: tok })
+  assert.equal(t.summary(now).projects[0]!.model, 'claude-opus-5-5')
+})
+
 test('프로젝트별 집계와 토큰 급증 감지', () => {
   const cfg = loadConfig()
   cfg.limits.hogTokens5m = 10_000

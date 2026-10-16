@@ -25,7 +25,7 @@ console.log(
     .join('\n')
 )
 
-const shutdown = async () => {
+const shutdown = async (): Promise<void> => {
   await commander.close()
   process.exit(0)
 }

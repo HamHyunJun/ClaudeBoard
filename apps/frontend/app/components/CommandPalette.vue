@@ -1,3 +1,50 @@
+<template>
+  <BaseDialog :open="open" labelledby="cp-label" placement="top" @close="emit('close')">
+    <div class="palette">
+      <label id="cp-label" for="cp-input" class="sr-only">명령 검색</label>
+      <div class="search">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+        <input
+          id="cp-input"
+          v-model="query"
+          type="text"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="cp-list"
+          :aria-activedescendant="items.length ? `cp-opt-${active}` : undefined"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="명령 검색, 또는 @프로젝트 지시문"
+          autofocus
+          @keydown="onKey"
+        />
+        <kbd>esc</kbd>
+      </div>
+
+      <div id="cp-list" class="list" role="listbox" aria-label="명령">
+        <template v-for="[group, entries] in groups" :key="group">
+          <p class="group" role="presentation">{{ group }}</p>
+          <div
+            v-for="{ item, index } in entries"
+            :id="`cp-opt-${index}`"
+            :key="item.id"
+            role="option"
+            class="opt"
+            :class="{ active: index === active }"
+            :aria-selected="index === active"
+            @mousemove="active = index"
+            @click="run(item)"
+          >
+            <span>{{ item.label }}</span>
+            <span v-if="item.hint" class="hint">{{ item.hint }}</span>
+          </div>
+        </template>
+        <p v-if="!items.length" class="none">일치하는 명령이 없습니다. "@이름 지시문" 형식으로 세션에 바로 보낼 수 있습니다.</p>
+      </div>
+    </div>
+  </BaseDialog>
+</template>
+
 <script setup lang="ts">
 /**
  * ⌘K / Ctrl+K 글로벌 명령창.
@@ -6,10 +53,9 @@
  */
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; addProject: []; focusPrompt: [id: string] }>()
+
 const cmd = useCommander()
 const notify = useNotify()
-const query = ref('')
-const active = ref(0)
 
 interface Item {
   id: string
@@ -18,6 +64,9 @@ interface Item {
   hint?: string
   run: () => void
 }
+
+const query = ref('')
+const active = ref(0)
 
 const items = computed<Item[]>(() => {
   const list: Item[] = []
@@ -81,25 +130,14 @@ const groups = computed(() => {
   return [...map.entries()]
 })
 
-watch(query, () => (active.value = 0))
-watch(
-  () => props.open,
-  (o) => {
-    if (o) {
-      query.value = ''
-      active.value = 0
-    }
-  }
-)
-
-function run(item?: Item) {
+const run = (item?: Item): void => {
   if (!item) return
   emit('close')
   // 닫힘 애니메이션·포커스 복원 이후 실행해야 포커스 이동 명령이 덮어써지지 않는다
   setTimeout(item.run, 30)
 }
 
-function onKey(e: KeyboardEvent) {
+const onKey = (e: KeyboardEvent): void => {
   const n = items.value.length
   if (e.key === 'ArrowDown') {
     e.preventDefault()
@@ -113,55 +151,19 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
+watch(query, () => (active.value = 0))
+watch(
+  () => props.open,
+  (o) => {
+    if (o) {
+      query.value = ''
+      active.value = 0
+    }
+  }
+)
+
 watch(active, (i) => nextTick(() => document.getElementById(`cp-opt-${i}`)?.scrollIntoView({ block: 'nearest' })))
 </script>
-
-<template>
-  <BaseDialog :open="open" labelledby="cp-label" placement="top" @close="emit('close')">
-    <div class="palette">
-      <label id="cp-label" for="cp-input" class="sr-only">명령 검색</label>
-      <div class="search">
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
-        <input
-          id="cp-input"
-          v-model="query"
-          type="text"
-          role="combobox"
-          aria-expanded="true"
-          aria-controls="cp-list"
-          :aria-activedescendant="items.length ? `cp-opt-${active}` : undefined"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="명령 검색, 또는 @프로젝트 지시문"
-          autofocus
-          @keydown="onKey"
-        />
-        <kbd>esc</kbd>
-      </div>
-
-      <div id="cp-list" class="list" role="listbox" aria-label="명령">
-        <template v-for="[group, entries] in groups" :key="group">
-          <p class="group" role="presentation">{{ group }}</p>
-          <div
-            v-for="{ item, index } in entries"
-            :id="`cp-opt-${index}`"
-            :key="item.id"
-            role="option"
-            class="opt"
-            :class="{ active: index === active }"
-            :aria-selected="index === active"
-            @mousemove="active = index"
-            @click="run(item)"
-          >
-            <span>{{ item.label }}</span>
-            <span v-if="item.hint" class="hint">{{ item.hint }}</span>
-          </div>
-        </template>
-        <p v-if="!items.length" class="none">일치하는 명령이 없습니다. "@이름 지시문" 형식으로 세션에 바로 보낼 수 있습니다.</p>
-      </div>
-    </div>
-  </BaseDialog>
-</template>
 
 <style scoped lang="scss">
 .palette {

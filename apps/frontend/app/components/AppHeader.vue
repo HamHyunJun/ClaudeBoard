@@ -1,14 +1,3 @@
-<script setup lang="ts">
-const emit = defineEmits<{ palette: [] }>()
-const cmd = useCommander()
-const notify = useNotify()
-const { theme, toggle: toggleTheme } = useTheme()
-const themeLabel = computed(() => (theme.value === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'))
-const isMac = computed(() => import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform))
-
-const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중', closed: '연결 끊김' })[cmd.conn.value])
-</script>
-
 <template>
   <header class="header">
     <div class="brand">
@@ -71,6 +60,17 @@ const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중',
     </div>
   </header>
 </template>
+
+<script setup lang="ts">
+const emit = defineEmits<{ palette: [] }>()
+const cmd = useCommander()
+const notify = useNotify()
+const { theme, toggle: toggleTheme } = useTheme()
+const themeLabel = computed(() => (theme.value === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'))
+const isMac = computed(() => import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform))
+
+const connLabel = computed(() => ({ open: '연결됨', connecting: '연결 중', closed: '연결 끊김' })[cmd.conn.value])
+</script>
 
 <style scoped lang="scss">
 .header {
