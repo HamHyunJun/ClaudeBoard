@@ -113,6 +113,25 @@ test('하단 상태줄(HUD)은 마지막 출력으로 잡지 않는다', () => {
   assert.equal(r.lastLine, '⏺ 모든 단계를 완료했습니다.')
 })
 
+test('HUD 의 Model 항목을 현재 모델로 읽는다', () => {
+  const r = analyzeScreen([
+    '⏺ 완료했습니다.',
+    '⚠ Transcript saving is off — inherited CLAUDE_CODE_CHILD_SESSION marker · restart with CL…',
+    '  branch:main | !1',
+    '  [OMC#5.6.2L] | Model: Sonnet 5.5 | 5h:[##------]26%(2h56m) wk:[######--]78%(21h6m)',
+    '  session:0m | ctx:[##--------]17%',
+    '  ⏵⏵ auto mode on (shift+tab to cycle)',
+    '', '', '', '', '', '' // 화면 아래 빈 줄
+  ])
+  assert.equal(r.model, 'Sonnet 5.5')
+  assert.equal(r.status, 'IDLE')
+})
+
+test('HUD 없이 본문에 Model: 이 나와도 모델로 읽지 않는다', () => {
+  assert.equal(analyzeScreen(['⏺ 설정 예시: Model: opus 를 쓰면 됩니다', '  ? for shortcuts']).model, undefined)
+  assert.equal(analyzeScreen(['  Model: Opus 4.7 | ctx:[#---]5%']).model, 'Opus 4.7')
+})
+
 test('HUD 의 git 상태 줄은 마지막 출력이 아니라 저장소별 상태로 읽는다', () => {
   const r = analyzeScreen(['⏺ 완료했습니다.', 'branch:main | ?4, branch:dev | +1 !3 ?3 ⇡2', '  ? for shortcuts'])
   assert.equal(r.lastLine, '⏺ 완료했습니다.')
