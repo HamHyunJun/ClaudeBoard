@@ -238,6 +238,8 @@ export class UsageTracker extends EventEmitter {
         }
         per.set(key, pu)
       }
+      // 기록은 시간순이라 마지막으로 덮어쓴 값이 최근 모델. <synthetic> 같은 가짜 모델명은 제외
+      if (r.model && !r.model.startsWith('<')) pu.model = r.model
       if (r.at >= dayStart) {
         const c = costOf(r.model, r.tokens)
         add(today, r.tokens)

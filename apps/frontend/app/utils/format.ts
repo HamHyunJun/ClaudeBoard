@@ -8,6 +8,18 @@ export function formatTokens(n: number): string {
   return String(Math.round(n))
 }
 
+/** "claude-opus-5-5" → "Opus 5.5", "claude-3-5-haiku-20241022" → "Haiku 3.5". 모르는 형식은 원본 그대로 */
+export function formatModel(id: string): string {
+  const s = id.toLowerCase().replace(/\[.*\]$/, '').replace(/^claude-/, '').replace(/-\d{8}$/, '')
+  const name = (family: string, major: string, minor?: string): string =>
+    `${family[0]!.toUpperCase()}${family.slice(1)} ${major}${minor ? `.${minor}` : ''}`
+  const a = s.match(/^([a-z]+)-(\d+)(?:-(\d+))?$/)
+  if (a) return name(a[1]!, a[2]!, a[3])
+  const b = s.match(/^(\d+)(?:-(\d+))?-([a-z]+)$/)
+  if (b) return name(b[3]!, b[1]!, b[2])
+  return id
+}
+
 export function formatCost(usd: number): string {
   return usd >= 100 ? `$${usd.toFixed(0)}` : `$${usd.toFixed(2)}`
 }
