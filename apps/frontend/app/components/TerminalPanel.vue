@@ -10,7 +10,7 @@
       <div class="tools">
         <button v-if="!running" class="tool" type="button" @click="cmd.start(item.project.id)">시작</button>
         <button v-else class="tool" type="button" @click="cmd.input(item.project.id, '\x1b')" title="Esc 키 전송: 현재 작업 중단">
-          중단
+          작업 중단
         </button>
       </div>
     </header>
@@ -151,6 +151,7 @@ watch(tab, () => nextTick(moveIndicator))
 }
 .tools {
   display: flex;
+  flex: none;
   gap: 4px;
 }
 .tool {
@@ -160,6 +161,7 @@ watch(tab, () => nextTick(moveIndicator))
   height: 30px;
   min-width: 30px;
   padding: 0 10px;
+  white-space: nowrap;
   border: 1px solid var(--rule-strong);
   border-radius: var(--r-sm);
   background: var(--ink-2);
