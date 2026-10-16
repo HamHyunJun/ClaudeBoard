@@ -37,7 +37,7 @@
         <span class="state-label">{{ statusLabel }}</span>
         <span v-if="session?.activeTool && running && status !== 'IDLE'" class="tool">{{ session.activeTool }}</span>
         <span v-if="elapsed" class="elapsed">{{ elapsed }}</span>
-        <span v-if="modelName" class="model" :title="usage?.model" :aria-label="`모델 ${modelName}`">{{ modelName }}</span>
+        <span v-if="modelName" class="model" :title="session?.model ? undefined : usage?.model" :aria-label="`모델 ${modelName}`">{{ modelName }}</span>
         <ul v-if="session?.git?.length" class="git" aria-label="git 상태">
           <li v-for="g in session.git" :key="g.branch" class="repo">
             <span class="branch" :title="g.branch">{{ g.branch }}</span>
@@ -210,8 +210,11 @@ const statusLabel = computed(() => {
   if (p === 'error') return '실행 실패'
   return unseenDone.value ? '완료 · 확인 대기' : STATUS_LABEL[status.value]
 })
-// 꺼진 세션의 오래된 로그 모델은 보여주지 않는다
-const modelName = computed(() => (running.value && props.usage?.model ? formatModel(props.usage.model) : ''))
+// 화면 HUD 에서 읽은 모델이 가장 정확하고, 없으면 로그의 최근 모델. 꺼진 세션의 오래된 값은 보여주지 않는다
+const modelName = computed(() => {
+  if (!running.value) return ''
+  return props.session?.model ?? (props.usage?.model ? formatModel(props.usage.model) : '')
+})
 const elapsed = computed(() => (props.session && running.value ? formatElapsed(now.value - props.session.statusSince) : ''))
 const hot = computed(() => (props.usage?.last5m ?? 0) >= props.hogThreshold)
 const quickActions = computed(() => props.project.quickActions?.length ? props.project.quickActions : DEFAULT_QUICK_ACTIONS)

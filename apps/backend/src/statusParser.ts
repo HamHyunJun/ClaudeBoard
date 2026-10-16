@@ -36,6 +36,8 @@ export interface ScreenAnalysis {
   lastLine?: string
   /** HUD 줄에서 읽은 git 상태 */
   git?: GitRepoState[]
+  /** HUD 줄에서 읽은 모델 표시 이름 */
+  model?: string
 }
 
 const clean = (line: string): string => {
@@ -64,6 +66,13 @@ export function parseGitHud(line: string): GitRepoState[] | undefined {
   return repos.length ? repos : undefined
 }
 
+/** `[OMC#5.6.2L] | Model: Sonnet 5.5 | 5h:…` → "Sonnet 5.5". 모델 항목이 있는 HUD 줄이 아니면 undefined */
+export const parseModelHud = (line: string): string | undefined => {
+  if (!line.includes('|')) return undefined
+  const name = line.match(/(?:^|\|)\s*Model:\s*([^|]+?)\s*(?:\||$)/)?.[1]
+  return name && name.length <= 40 ? name : undefined
+}
+
 const isChrome = (line: string): boolean => {
   const t = line.trim()
   if (!t) return true
@@ -81,7 +90,9 @@ const isChrome = (line: string): boolean => {
 
 export function analyzeScreen(rawLines: string[]): ScreenAnalysis {
   const git = [...rawLines].reverse().slice(0, 25).map((l) => parseGitHud(unbox(l))).find(Boolean)
-  return { ...analyzeBody(rawLines), git }
+  // 본문에 우연히 "Model:" 이 나올 수 있어 HUD 가 있는 화면 맨 아래 몇 줄만 본다 (화면 아래 빈 줄은 건너뛴다)
+  const model = rawLines.filter((l) => l.trim()).reverse().slice(0, 8).map((l) => parseModelHud(unbox(l))).find(Boolean)
+  return { ...analyzeBody(rawLines), git, model }
 }
 
 const analyzeBody = (rawLines: string[]): ScreenAnalysis => {

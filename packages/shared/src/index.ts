@@ -89,6 +89,8 @@ export interface SessionSnapshot {
   lastLine?: string
   /** 하단 상태줄(HUD)의 git 상태. 화면에서 사라져도 마지막 값을 유지 */
   git?: GitRepoState[]
+  /** 하단 상태줄(HUD)에서 읽은 현재 모델 표시 이름 (예: "Sonnet 5.5"). 화면에서 사라져도 마지막 값을 유지 */
+  model?: string
   /** 현재 실행 중인 도구 (예: "Bash", "Edit") */
   activeTool?: string
   approval?: ApprovalRequest
