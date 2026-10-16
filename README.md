@@ -28,7 +28,9 @@ ClaudeBoard는 이 세 가지를 한 화면에서 해결하는 "관제탑"입니
 | 토큰 센터 | 오늘 토큰과 API 단가 환산 비용, 5시간 사용 창 리셋 카운트다운, 주간·월간 잔여량, 프로젝트별 순위와 30분 스파크라인을 보여주고 토큰 급증(Token Hog)을 경고합니다. |
 | 승인 | 승인 요청이 감지되면 상단 배너에 [승인]/[거절]이 뜹니다. 클릭 한 번으로 해당 PTY에 응답 키가 전달됩니다. |
 | 폴더 열기 | 세션을 선택하면 나오는 **폴더 열기**로 프로젝트 폴더를 VS Code·Cursor·Finder·터미널 중 하나로 엽니다. 열기 전에 앱을 확인받고, 마지막으로 고른 앱을 기본값으로 기억합니다. macOS 전용입니다. |
-| 알림 | 승인 요청, 작업 완료, 토큰 급증을 화면 토스트와 브라우저 데스크톱 알림(창이 가려져 있을 때)으로 알립니다. |
+| 알림 | 승인 요청, 작업 완료, 토큰 급증을 화면 토스트와 브라우저 데스크톱 알림(창이 가려져 있을 때)으로 알립니다. 브라우저가 하나도 열려 있지 않으면 macOS 알림 센터로 대신 알립니다(경고 이상과 작업 완료만). |
+| 이벤트 기록 | 알림은 `~/.claudeboard/alerts.jsonl`에 이어 적습니다. 서버를 다시 띄워도 최근 50개가 이벤트 탭에 남습니다. 2,000줄을 넘으면 불러올 때 최근 것만 남기고 줄입니다. |
+| 자동 재시작 | `autoStart` 프로젝트의 세션이 0이 아닌 코드로 끝나면 2·4·8초… 간격으로 최대 5번 다시 띄웁니다. 1분 넘게 살아 있다 죽으면 횟수를 새로 셉니다. 계속 죽으면 포기하고 알립니다. 사용자가 중지·재시작한 종료와 정상 종료(코드 0)는 대상이 아닙니다. 대화는 이어지지 않고 새 세션으로 시작합니다. |
 
 ## 빠른 시작
 
@@ -74,6 +76,8 @@ claudeboard/
 │   │   ├── server.ts         REST, WebSocket 업그레이드, Origin 검사, 브로드캐스트, 정적 파일 서빙
 │   │   ├── sessionManager.ts 프로젝트당 PTY 세션: 스폰, 링버퍼, 가상 화면, 상태 전이, 알림
 │   │   ├── statusParser.ts   화면 텍스트 → 상태·승인 요청·워크플로우 진행률 (순수 함수)
+│   │   ├── alertLog.ts       알림을 alerts.jsonl 에 이어 쓰고 서버 시작 시 불러오기
+│   │   ├── osNotify.ts       브라우저가 없을 때 macOS 알림 (osascript, 인자 배열로 전달)
 │   │   ├── usageTracker.ts   ~/.claude 세션 로그 증분 집계, 5시간 창, 토큰 급증 감지
 │   │   ├── officialUsage.ts  Claude 계정의 5시간·주간 사용률과 리셋 시각 조회 (로그 합산보다 우선하는 출처)
 │   │   ├── pricing.ts        모델별 단가표와 비용 계산
@@ -166,6 +170,9 @@ REST: `GET /api/health`, `GET/POST /api/projects`, `POST /api/projects/:id/open`
 | `CLAUDEBOARD_WINDOW_TOKENS`, `CLAUDEBOARD_WINDOW_HOURS` | 25,000,000, 5 | 사용 창 한도와 길이 |
 | `CLAUDEBOARD_HOG_TOKENS_5M` | 400,000 | 토큰 급증 경고 임계값 (최근 5분) |
 | `CLAUDEBOARD_REPLAY_BYTES` | 524,288 | 재접속 시 재생할 출력 크기 |
+| `CLAUDEBOARD_AUTORESTART=0` | 켜짐 | 비정상 종료 세션의 자동 재시작을 끕니다 |
+| `CLAUDEBOARD_RESTART_MAX` | 5 | 자동 재시작 최대 횟수 |
+| `CLAUDEBOARD_NOTIFY=0` | 켜짐(macOS, 데모 제외) | 브라우저가 없을 때의 macOS 알림을 끕니다 |
 | `CLAUDEBOARD_DEMO=1` | 꺼짐 | mock-claude로 데모 실행 (임시 디렉터리 사용, 실제 `~/.claude`를 건드리지 않습니다) |
 
 ## 디자인

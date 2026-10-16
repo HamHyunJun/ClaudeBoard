@@ -17,6 +17,8 @@ const ANALYZE_DEBOUNCE_MS = 120
 const TASK_DONE_MIN_MS = 4000
 /** 작업 단계 사이 잠깐 스피너가 사라지는 순간을 IDLE로 오인하지 않도록 확정까지 기다리는 시간 */
 const IDLE_CONFIRM_MS = 900
+/** 이 시간 넘게 살아 있다 죽었으면 재시작 횟수를 처음부터 센다 */
+const STABLE_RUN_MS = 60_000
 
 /** 데모 모드에서 claude 대신 실행할 모의 CLI */
 export const MOCK_CLAUDE_PATH = fileURLToPath(new URL('../mock/mock-claude.mjs', import.meta.url))
@@ -36,6 +38,11 @@ export class Session extends EventEmitter {
   private idleCandidateAt: number | null = null
   private idleTimer?: NodeJS.Timeout
   private lastEmitted = ''
+  private startedAt = 0
+  /** 사용자가 중지·재시작·삭제한 종료는 자동 재시작 대상이 아니다 */
+  private manualExit = false
+  private restartAttempts = 0
+  private restartTimer?: NodeJS.Timeout
   snapshot: SessionSnapshot
 
   constructor(
@@ -60,6 +67,8 @@ export class Session extends EventEmitter {
 
   start(): void {
     if (this.proc) return
+    clearTimeout(this.restartTimer)
+    this.manualExit = false
     const { command, args } = this.resolveCommand()
     if (!existsSync(this.project.cwd)) {
       this.fail(`작업 디렉터리가 없습니다: ${this.project.cwd}`)
@@ -86,6 +95,7 @@ export class Session extends EventEmitter {
       this.fail(`실행하지 못했습니다: ${command} (${(err as Error).message})`)
       return
     }
+    this.startedAt = Date.now()
     this.update({ process: 'running', pid: this.proc.pid })
 
     this.proc.onData((data) => {
@@ -108,10 +118,38 @@ export class Session extends EventEmitter {
         title: `${this.project.name} 세션 종료`,
         body: exitCode === 0 ? '정상 종료되었습니다.' : `종료 코드 ${exitCode}로 끝났습니다. 터미널 출력을 확인하세요.`
       })
+      if (exitCode !== 0 && !this.manualExit) this.scheduleAutoRestart()
     })
   }
 
+  /** 비정상 종료한 autoStart 세션을 지수 백오프로 다시 띄운다. 계속 죽으면 포기하고 알린다 */
+  private scheduleAutoRestart(): void {
+    const { maxAttempts, baseMs } = this.cfg.autoRestart
+    if (!maxAttempts || !this.project.autoStart) return
+    if (Date.now() - this.startedAt > STABLE_RUN_MS) this.restartAttempts = 0
+    if (this.restartAttempts >= maxAttempts) {
+      this.emitAlert({
+        level: 'critical',
+        kind: 'error',
+        title: `${this.project.name} 자동 재시작 중단`,
+        body: `${maxAttempts}번 다시 띄웠지만 계속 종료됩니다. 터미널 출력을 확인하고 직접 시작하세요.`
+      })
+      return
+    }
+    const attempt = ++this.restartAttempts
+    const delay = baseMs * 2 ** (attempt - 1)
+    this.emitAlert({
+      level: 'warning',
+      kind: 'auto-restart',
+      title: `${this.project.name} 자동 재시작`,
+      body: `비정상 종료되어 ${Math.round(delay / 1000)}초 뒤 다시 시작합니다 (${attempt}/${maxAttempts}). 대화는 이어지지 않고 새 세션으로 시작합니다.`
+    })
+    this.restartTimer = setTimeout(() => this.start(), delay)
+  }
+
   stop(): void {
+    this.manualExit = true
+    clearTimeout(this.restartTimer)
     if (!this.proc) return
     // Claude Code 는 Ctrl+C 두 번이면 종료된다. 응답이 없으면 강제 종료.
     const proc = this.proc
@@ -169,6 +207,8 @@ export class Session extends EventEmitter {
   dispose(): void {
     clearTimeout(this.analyzeTimer)
     clearTimeout(this.idleTimer)
+    clearTimeout(this.restartTimer)
+    this.manualExit = true
     this.proc?.kill()
     this.proc = undefined
     this.term.dispose()
