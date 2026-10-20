@@ -1,7 +1,7 @@
 <template>
   <section class="banners" aria-live="assertive" aria-label="승인 대기">
     <TransitionGroup name="drop">
-      <article v-for="{ project, session } in cmd.pendingApprovals.value" :key="project.id" class="banner" role="alert">
+      <article v-for="{ project, session } in pending" :key="project.id" class="banner" role="alert">
         <StatusPulse status="REQUIRES_APPROVAL" :size="12" />
         <div class="body">
           <p class="title">
@@ -44,8 +44,11 @@
  * 승인 대기 중인 세션을 화면 최상단에 띄우고 원클릭으로 승인·거절한다.
  * 버튼을 누르면 즉시 "보내는 중" 상태로 바꿔 중복 클릭을 막는다.
  */
+const props = defineProps<{ exceptId?: string }>()
 const cmd = useCommander()
 const now = useNow()
+// 지금 터미널로 보고 있는 세션은 화면 안의 다이얼로그로 답하므로 배너에서 뺀다
+const pending = computed(() => cmd.pendingApprovals.value.filter((x) => x.project.id !== props.exceptId))
 const sent = ref<Record<string, 'yes' | 'no'>>({})
 
 const answer = (id: string, decision: 'yes' | 'no'): void => {

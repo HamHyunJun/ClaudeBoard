@@ -67,7 +67,11 @@ onMounted(() => {
     // 서랍이 접히거나 펼쳐지는 중에는 폭이 0 에 가까워 cols 가 2~3 으로 줄고, 내용이 글자 단위로 리플로우돼 한 줄처럼 보인다.
     // PTY 에도 그 크기가 전달되므로 충분히 넓을 때만 맞춘다
     if (!term || !fit || (host.value?.offsetWidth ?? 0) < MIN_FIT_WIDTH) return
+    // 위쪽 승인 배너가 사라지는 등 높이가 늘면 xterm 이 스크롤백을 끌어내리면서 맨 아래(입력창)를 벗어나므로, 바닥에 있었다면 다시 붙인다
+    const buf = term.buffer.active
+    const atBottom = buf.viewportY >= buf.baseY
     fit.fit()
+    if (atBottom) term.scrollToBottom()
     collapsed = false
     clearTimeout(resizeTimer)
     if (ready.value) {
