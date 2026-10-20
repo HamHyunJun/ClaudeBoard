@@ -5,6 +5,9 @@
       <p class="hint">
         <kbd>↑</kbd><kbd>↓</kbd> 이동 <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> 순서 변경 <kbd>t</kbd> 터미널 <kbd>/</kbd> 지시하기
       </p>
+      <button v-if="cmd.sessionList.value.length > 1" class="bulk-toggle" type="button" :aria-pressed="reorderMode" @click="reorderMode = !reorderMode">
+        순서 변경
+      </button>
       <button v-if="cmd.sessionList.value.length" class="bulk-toggle" type="button" :aria-pressed="bulkMode" @click="toggleBulk">
         일괄 지시
       </button>
@@ -49,8 +52,19 @@
       </form>
     </Transition>
 
-    <ol v-if="cmd.sessionList.value.length" ref="listEl" class="list">
-      <li v-for="item in cmd.sessionList.value" :key="item.project.id">
+    <p v-if="reorderMode" class="reorder-note" role="status">세션을 끌어서 원하는 위치에 놓으세요.</p>
+
+    <ol v-if="cmd.sessionList.value.length" ref="listEl" class="list" :class="{ reordering: reorderMode }">
+      <li
+        v-for="item in cmd.sessionList.value"
+        :key="item.project.id"
+        :draggable="reorderMode"
+        :class="{ dragging: dragId === item.project.id, over: reorderMode && overId === item.project.id && dragId !== item.project.id, below: dragBelow }"
+        @dragstart="onDragStart($event, item.project.id)"
+        @dragover="onDragOver($event, item.project.id)"
+        @drop.prevent="onDrop(item.project.id)"
+        @dragend="dragId = overId = undefined"
+      >
         <SessionStrip
           :ref="(el) => setStrip(item.project.id, el)"
           :project="item.project"
@@ -94,6 +108,11 @@ const listEl = ref<HTMLOListElement>()
 const bulkMode = ref(false)
 const checkedIds = ref<string[]>([])
 const bulkDraft = ref('')
+// 순서 변경: 끌고 있는 세션과 그 아래로 지나가는 세션 id
+const reorderMode = ref(false)
+const dragId = ref<string>()
+const overId = ref<string>()
+const dragBelow = ref(false)
 
 const usageById = computed(() => {
   const map: Record<string, NonNullable<typeof cmd.usage.value>['projects'][number]> = {}
@@ -140,6 +159,27 @@ const sendBulk = (text: string): void => {
     body: skipped ? `꺼져 있는 ${skipped}개 세션은 건너뛰었습니다` : undefined
   })
   bulkDraft.value = ''
+}
+
+const onDragStart = (e: DragEvent, id: string): void => {
+  if (!reorderMode.value) return
+  dragId.value = id
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+const onDragOver = (e: DragEvent, id: string): void => {
+  if (!dragId.value) return
+  e.preventDefault()
+  overId.value = id
+  const ids = cmd.sessionList.value.map((x) => x.project.id)
+  dragBelow.value = ids.indexOf(dragId.value) < ids.indexOf(id)
+}
+
+const onDrop = (id: string): void => {
+  const from = dragId.value
+  dragId.value = overId.value = undefined
+  if (!from) return
+  cmd.moveProjectBefore(from, id).catch((err: Error) => notify.toast({ level: 'warning', title: '순서를 바꾸지 못했습니다', body: err.message }))
 }
 
 const select = (id: string): void => {
@@ -386,6 +426,12 @@ defineExpose({
   transform: translateY(-6px);
 }
 
+.reorder-note {
+  margin: 0 2px 10px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
 .list {
   display: flex;
   flex-direction: column;
@@ -394,6 +440,39 @@ defineExpose({
   padding: 0 0 28px;
   list-style: none;
   overflow-y: auto;
+}
+
+.list li {
+  position: relative;
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+// 순서 변경 중에는 스트립 안의 버튼·입력이 드래그를 가로채지 않게 한다
+.reordering li {
+  cursor: grab;
+  :deep(.strip) {
+    pointer-events: none;
+  }
+  &.dragging {
+    opacity: 0.45;
+    transform: scale(0.985);
+    cursor: grabbing;
+  }
+  &.over::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -8px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--focus);
+  }
+  &.over.below::after {
+    top: auto;
+    bottom: -8px;
+  }
 }
 
 .empty {

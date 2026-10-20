@@ -59,6 +59,7 @@ export interface Commander {
   listDirs: (path?: string) => Promise<DirListing>
   openProject: (id: string, app: OpenAppId) => Promise<void>
   moveProject: (id: string, to: 'up' | 'down' | 'top') => Promise<void>
+  moveProjectBefore: (id: string, targetId: string) => Promise<void>
   removeProject: (id: string) => Promise<void>
   reconnectNow: () => void
 }
@@ -296,6 +297,15 @@ export function useCommander(): Commander {
       const j = to === 'top' ? 0 : Math.max(0, Math.min(ids.length - 1, i + (to === 'up' ? -1 : 1)))
       if (j === i) return Promise.resolve()
       ids.splice(j, 0, ids.splice(i, 1)[0]!)
+      return api<void>('/api/projects/order', { method: 'PUT', body: JSON.stringify({ ids }) })
+    },
+    /** 드래그 앤 드롭: id 를 targetId 가 있던 자리로 옮긴다 (아래로 끌면 target 뒤, 위로 끌면 앞) */
+    moveProjectBefore(id: string, targetId: string): Promise<void> {
+      const ids = projects.value.map((p) => p.id)
+      const from = ids.indexOf(id)
+      const to = ids.indexOf(targetId)
+      if (from < 0 || to < 0 || from === to) return Promise.resolve()
+      ids.splice(to, 0, ids.splice(from, 1)[0]!)
       return api<void>('/api/projects/order', { method: 'PUT', body: JSON.stringify({ ids }) })
     },
     removeProject: (id: string): Promise<void> => api<void>(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
