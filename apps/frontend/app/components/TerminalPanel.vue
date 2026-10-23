@@ -1,166 +1,287 @@
 <template>
-  <section v-if="item" class="panel" :aria-label="`${item.project.name} 터미널`">
-    <header class="head">
-      <div class="who">
-        <StatusPulse :status="session?.status ?? 'IDLE'" :offline="!running" />
-        <h2>{{ item.project.name }}</h2>
-        <span class="state">{{ running ? STATUS_LABEL[session?.status ?? 'IDLE'] : '꺼짐' }}</span>
-        <span v-if="session?.pid" class="pid code">pid {{ session.pid }}</span>
+  <section class="work" :aria-label="item ? `${item.project.name} 터미널` : '터미널'">
+    <header class="tabbar">
+      <div class="tabs" role="tablist" aria-label="열린 세션" @keydown="onTabKey">
+        <div v-for="t in tabItems" :key="t.project.id" class="tab" :class="{ active: t.project.id === item?.project.id }">
+          <button
+            role="tab"
+            type="button"
+            class="tab-btn"
+            :data-tab="t.project.id"
+            :aria-selected="t.project.id === item?.project.id"
+            :tabindex="t.project.id === item?.project.id ? 0 : -1"
+            @click="cmd.openTerminal(t.project.id)"
+          >
+            <StatusPulse :status="t.session?.status ?? 'IDLE'" :offline="!isRunning(t)" :size="8" />
+            <span>{{ t.project.name }}</span>
+          </button>
+          <button class="tab-x" type="button" :aria-label="`${t.project.name} 탭 닫기`" @click="closeTab(t.project.id)">
+            <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
       </div>
-      <div class="tools">
-        <button v-if="!running" class="tool" type="button" @click="cmd.start(item.project.id)">시작</button>
-        <button v-else class="tool" type="button" @click="cmd.input(item.project.id, '\x1b')" title="Esc 키 전송: 현재 작업 중단">
-          작업 중단
+
+      <div v-if="item" class="tools">
+        <button class="tool ghost" type="button" @click="cmd.openTargetId.value = item.project.id">폴더 열기</button>
+        <template v-if="s.running.value">
+          <button class="tool ghost" type="button" title="Esc 키 전송: 현재 작업 중단" @click="interrupt">작업 중단</button>
+          <button class="tool ghost" type="button" @click="cmd.restart(item.project.id)">재시작</button>
+          <button class="tool" type="button" @click="cmd.stop(item.project.id)">중지</button>
+        </template>
+        <button v-else class="tool primary" type="button" @click="cmd.start(item.project.id)">시작</button>
+        <button
+          class="tool ghost danger"
+          :class="{ armed: confirmRemove }"
+          type="button"
+          :aria-label="`${item.project.name} 프로젝트 삭제`"
+          @click="removeProject"
+          @blur="confirmRemove = false"
+        >
+          {{ confirmRemove ? '정말 삭제?' : '삭제' }}
         </button>
       </div>
     </header>
 
-    <div class="tabs" role="tablist" aria-label="보기 선택" @keydown="onTabKey">
-      <button
-        v-for="t in tabs"
-        :id="`tab-${t.id}`"
-        :key="t.id"
-        :ref="(el) => el && (tabEls[t.id] = el as HTMLButtonElement)"
-        role="tab"
-        type="button"
-        :aria-selected="tab === t.id"
-        :aria-controls="`tabpanel-${t.id}`"
-        :tabindex="tab === t.id ? 0 : -1"
-        class="tab"
-        @click="tab = t.id"
-      >
-        {{ t.label }}
-        <span v-if="t.id === 'events' && events.length" class="count">{{ events.length }}</span>
+    <div v-if="item" class="meta" :class="s.tone.value">
+      <span class="path code" :title="item.project.cwd">{{ shortPath(item.project.cwd) }}</span>
+      <span class="state">{{ s.label.value }}<template v-if="s.elapsed.value"> · {{ s.elapsed.value }}</template></span>
+      <span v-if="s.model.value" class="pill">{{ s.model.value }}</span>
+      <span v-for="g in session?.git ?? []" :key="g.branch" class="git code" :title="gitTitle(g)">⎇ {{ g.branch }}<template v-if="gitDirty(g)"> ±{{ gitDirty(g) }}</template></span>
+      <WorkflowTrack
+        v-if="s.running.value"
+        class="wf"
+        :workflow="session?.workflow ?? { stage: null, percent: 0, source: 'none' }"
+        :status="s.status.value"
+        :busy-since="session?.busySince"
+      />
+      <span class="nums">
+        <span>{{ formatTokens(s.tokens.value) }} 토큰</span>
+        <span>{{ formatCost(s.usage.value?.todayCost ?? 0) }}</span>
+      </span>
+      <button class="ev-toggle" type="button" :aria-pressed="view === 'events'" @click="view = view === 'events' ? 'terminal' : 'events'">
+        이벤트<span v-if="events.length" class="count">{{ events.length }}</span>
       </button>
-      <span class="indicator" :style="{ transform: `translateX(${indicator.x}px)`, width: `${indicator.w}px` }" aria-hidden="true" />
     </div>
 
-    <div class="views">
-      <Transition name="fade" mode="out-in">
-        <div v-if="tab === 'terminal'" id="tabpanel-terminal" key="t" role="tabpanel" aria-labelledby="tab-terminal" class="view">
-          <XtermView ref="xterm" :key="item.project.id" :project-id="item.project.id" :label="item.project.name" />
-        </div>
-        <div v-else id="tabpanel-events" key="e" role="tabpanel" aria-labelledby="tab-events" class="view events" tabindex="0">
-          <ol v-if="events.length" class="log">
-            <li v-for="a in events" :key="a.id" :class="a.level">
-              <time :datetime="new Date(a.at).toISOString()">{{ formatClock(a.at) }}</time>
-              <div>
-                <p class="ev-title">{{ a.title }}</p>
-                <p class="ev-body">{{ a.body }}</p>
-              </div>
-            </li>
-          </ol>
-          <p v-else class="empty">아직 기록된 이벤트가 없습니다. 승인 요청, 작업 완료, 토큰 급증이 여기에 쌓입니다.</p>
-        </div>
-      </Transition>
+    <div class="body">
+      <div v-if="!item" class="blank">
+        <p class="blank-title">왼쪽에서 프로젝트 폴더를 고르세요</p>
+        <p>고른 폴더의 Claude Code 화면이 여기에 그대로 열립니다.</p>
+      </div>
+      <div v-else-if="view === 'events'" class="events" tabindex="0">
+        <ol v-if="events.length" class="log">
+          <li v-for="a in events" :key="a.id" :class="a.level">
+            <time :datetime="new Date(a.at).toISOString()">{{ formatClock(a.at) }}</time>
+            <div>
+              <p class="ev-title">{{ a.title }}</p>
+              <p class="ev-body">{{ a.body }}</p>
+            </div>
+          </li>
+        </ol>
+        <p v-else class="empty">아직 기록된 이벤트가 없습니다. 승인 요청, 작업 완료, 토큰 급증이 여기에 쌓입니다.</p>
+      </div>
+      <XtermView v-else-if="hasScreen" ref="xterm" :key="item.project.id" :project-id="item.project.id" :label="item.project.name" />
+      <div v-else class="blank">
+        <p class="blank-title">{{ item.project.name }} 세션이 꺼져 있습니다</p>
+        <p>
+          시작하면 <code>{{ shortPath(item.project.cwd) }}</code> 에서 Claude Code가 실행됩니다.
+        </p>
+        <p v-if="session?.error" class="err">{{ session.error }}</p>
+        <button class="tool primary big" type="button" @click="cmd.start(item.project.id)">세션 시작</button>
+      </div>
     </div>
-
-    <footer class="foot">
-      <span>{{ shortPath(item.project.cwd) }}</span>
-      <span v-if="session">{{ session.cols }}×{{ session.rows }}</span>
-      <span v-if="session?.lastOutputAt">마지막 출력 {{ formatElapsed(now - session.lastOutputAt) }} 전</span>
-    </footer>
   </section>
 </template>
 
 <script setup lang="ts">
+import type { GitRepoState } from '@claudeboard/shared'
+import type { SessionItem } from '~/composables/useCommander'
+
 /**
- * 선택한 세션의 실시간 터미널과 이벤트 기록을 탭으로 보여주는 오른쪽 패널.
- * 탭 표시줄은 스프링으로 미끄러지며 이동한다.
+ * 중앙 작업 영역: 열린 세션 탭, 세션 도구, 상태 줄, 그리고 화면 전체를 쓰는 Claude Code 터미널.
+ * 사이드바에서 폴더를 고르면 탭이 추가되고 그 세션의 PTY 가 그대로 보인다.
  */
 const cmd = useCommander()
-const now = useNow()
-
-const tab = ref<'terminal' | 'events'>('terminal')
-const tabs = [
-  { id: 'terminal', label: '터미널' },
-  { id: 'events', label: '이벤트' }
-] as const
-const tabEls = ref<Record<string, HTMLButtonElement>>({})
-const indicator = ref({ x: 0, w: 0 })
-const xterm = ref<{ focus: () => void }>()
-
-onMounted(() => nextTick(moveIndicator))
 
 const item = computed(() => cmd.terminalTarget.value)
 const session = computed(() => item.value?.session)
-const running = computed(() => session.value?.process === 'running' || session.value?.process === 'starting')
+const s = useSessionState(() => item.value)
+const view = ref<'terminal' | 'events'>('terminal')
+const xterm = ref<{ focus: () => void }>()
 const events = computed(() => cmd.alerts.value.filter((a) => a.projectId === item.value?.project.id))
+// 한 번이라도 출력이 있었던 세션은 종료 뒤에도 마지막 화면을 보여준다
+const hasScreen = computed(() => s.running.value || session.value?.process === 'exited')
 
-const moveIndicator = (): void => {
-  const el = tabEls.value[tab.value]
-  if (el) indicator.value = { x: el.offsetLeft, w: el.offsetWidth }
+const isRunning = (x: SessionItem): boolean => x.session?.process === 'running' || x.session?.process === 'starting'
+
+/* ───────────── 탭 ───────────── */
+
+// 처음에는 실행 중인 세션을 모두 탭으로 열고, 이후 고른 세션을 덧붙인다
+const openIds = ref<string[]>([])
+let seeded = false
+watchEffect(() => {
+  const list = cmd.sessionList.value
+  if (!seeded && list.length) {
+    seeded = true
+    openIds.value = list.filter(isRunning).map((x) => x.project.id)
+  }
+  const id = item.value?.project.id
+  if (id && !openIds.value.includes(id)) openIds.value = [...openIds.value, id]
+})
+const tabItems = computed(() =>
+  openIds.value.map((id) => cmd.sessionList.value.find((x) => x.project.id === id)).filter((x): x is SessionItem => !!x)
+)
+
+const closeTab = (id: string): void => {
+  const i = openIds.value.indexOf(id)
+  const rest = openIds.value.filter((x) => x !== id)
+  if (item.value?.project.id === id) {
+    // 닫은 탭이 보고 있던 세션이면 옆 탭으로 옮긴다. 남은 탭이 없으면 빈 화면
+    const next = rest[Math.min(i, rest.length - 1)]
+    if (next) cmd.openTerminal(next)
+    else cmd.selectedId.value = null
+  }
+  openIds.value = rest
 }
 
 const onTabKey = (e: KeyboardEvent): void => {
   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const ids = tabItems.value.map((x) => x.project.id)
+  const i = ids.indexOf(item.value?.project.id ?? '')
+  if (i < 0 || !ids.length) return
   e.preventDefault()
-  tab.value = tab.value === 'terminal' ? 'events' : 'terminal'
-  nextTick(() => tabEls.value[tab.value]?.focus())
+  const next = ids[(i + (e.key === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length]!
+  cmd.openTerminal(next)
+  nextTick(() => document.querySelector<HTMLElement>(`[data-tab="${CSS.escape(next)}"]`)?.focus())
 }
 
-defineExpose({ focus: () => xterm.value?.focus() })
+// 다른 세션으로 바꾸면 터미널 보기로 돌아간다
+watch(() => item.value?.project.id, () => (view.value = 'terminal'))
 
-watch(tab, () => nextTick(moveIndicator))
+/* ───────────── 도구 ───────────── */
+
+const interrupt = (): void => {
+  if (!item.value) return
+  cmd.input(item.value.project.id, '\x1b')
+  xterm.value?.focus()
+}
+
+// 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
+const confirmRemove = ref(false)
+let confirmTimer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(confirmTimer))
+watch(() => item.value?.project.id, () => (confirmRemove.value = false))
+
+const removeProject = async (): Promise<void> => {
+  const id = item.value?.project.id
+  if (!id) return
+  if (!confirmRemove.value) {
+    confirmRemove.value = true
+    confirmTimer = setTimeout(() => (confirmRemove.value = false), 3000)
+    return
+  }
+  clearTimeout(confirmTimer)
+  confirmRemove.value = false
+  try {
+    await cmd.removeProject(id)
+    closeTab(id)
+  } catch (err) {
+    useNotify().toast({ level: 'warning', title: (err as Error).message })
+  }
+}
+
+const gitDirty = (g: GitRepoState): number => g.staged + g.modified + g.untracked
+const gitTitle = (g: GitRepoState): string =>
+  `스테이징 ${g.staged} · 수정 ${g.modified} · 추적 안 됨 ${g.untracked} · 푸시 안 함 ${g.ahead} · 받을 커밋 ${g.behind}`
+
+defineExpose({ focus: () => xterm.value?.focus() })
 </script>
 
 <style scoped lang="scss">
-.panel {
+.work {
   display: grid;
-  // 열을 패널 폭에 고정: auto 열이면 넓은 xterm 때문에 열이 늘어나 헤더의 닫기 버튼이 잘린다
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto 1fr auto;
-  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
   min-height: 0;
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--r-lg);
-  background: var(--ink-1);
-  overflow: hidden;
+  background: var(--ink-0);
 }
 
-.head {
+/* ── 탭 ── */
+.tabbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 12px 8px 16px;
+  align-items: stretch;
+  min-height: 44px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--ink-1);
 }
-.who {
+.tabs {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
-  h2 {
-    margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: var(--fs-lg);
-    font-weight: 700;
-    font-stretch: 90%;
+  flex: none;
+  border-right: 1px solid var(--rule);
+  color: var(--text-2);
+  &.active {
+    background: var(--ink-0);
+    color: var(--text);
+    box-shadow: inset 0 2px 0 var(--text-2);
   }
 }
-.state {
+.tab-btn {
+  @include pressable;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 4px 0 16px;
+  border: 0;
+  background: transparent;
   font-size: var(--fs-sm);
-  color: var(--text-2);
+  font-weight: 600;
   white-space: nowrap;
+  &:active:not(:disabled) {
+    transform: none;
+  }
 }
-.pid {
-  font-size: var(--fs-xs);
+.tab-x {
+  @include pressable;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 8px 0 4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
   color: var(--text-3);
+  &:hover {
+    background: var(--ink-3);
+    color: var(--text);
+  }
 }
+
 .tools {
   display: flex;
-  flex: none;
+  align-items: center;
   gap: 4px;
+  margin-left: auto;
+  padding: 0 12px;
 }
 .tool {
   @include pressable;
   display: inline-grid;
   place-items: center;
   height: 30px;
-  min-width: 30px;
-  padding: 0 10px;
+  padding: 0 11px;
   white-space: nowrap;
   border: 1px solid var(--rule-strong);
   border-radius: var(--r-sm);
@@ -170,71 +291,161 @@ watch(tab, () => nextTick(moveIndicator))
   &:hover {
     background: var(--ink-3);
   }
+  &.ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-2);
+    &:hover {
+      background: var(--ink-2);
+      color: var(--text);
+    }
+  }
+  &.primary {
+    border-color: transparent;
+    background: var(--text);
+    color: var(--ink-0);
+  }
+  &.danger {
+    color: var(--text-3);
+    &:hover,
+    &.armed {
+      color: var(--approval);
+    }
+    &.armed {
+      border-color: var(--approval);
+      background: var(--approval-wash);
+    }
+  }
+  &.big {
+    height: 38px;
+    padding: 0 18px;
+  }
 }
 
-.tabs {
-  position: relative;
+/* ── 상태 줄 ── */
+.meta {
+  --c: var(--idle);
   display: flex;
-  gap: 4px;
-  padding: 0 12px;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 7px 16px 7px 20px;
   border-bottom: 1px solid var(--rule);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+  &.offline {
+    --c: var(--text-3);
+  }
+  &.thinking {
+    --c: var(--thinking);
+  }
+  &.executing {
+    --c: var(--executing);
+  }
+  &.approval,
+  &.asking {
+    --c: var(--approval);
+  }
 }
-.tab {
+.path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
+}
+.state {
+  font-weight: 600;
+  color: var(--c);
+}
+.pill {
+  padding: 0 8px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.git {
+  color: var(--text-2);
+}
+.wf {
+  flex: 0 1 320px;
+  min-width: 200px;
+}
+.nums {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+  color: var(--text-2);
+}
+.ev-toggle {
   @include pressable;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 10px;
-  border: 0;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
   background: transparent;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--text-3);
-  &[aria-selected='true'] {
+  color: var(--text-2);
+  &:hover,
+  &[aria-pressed='true'] {
+    background: var(--ink-2);
     color: var(--text);
-  }
-  &:hover {
-    color: var(--text-2);
   }
 }
 .count {
   padding: 0 6px;
   border-radius: 999px;
   background: var(--ink-3);
-  font-size: var(--fs-xs);
   color: var(--text-2);
 }
-.indicator {
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--text);
-  transition:
-    transform var(--dur-spring) var(--spring),
-    width var(--dur-spring) var(--spring);
+
+/* ── 본문 ── */
+.body {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
 }
 
-.views {
-  position: relative;
-  min-height: 0;
-  min-width: 0;
-}
-.view {
+.blank {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
   height: 100%;
-  min-height: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-3);
+  p {
+    margin: 0;
+    max-width: 52ch;
+  }
+  .tool {
+    margin-top: 10px;
+  }
+}
+.blank-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+.err {
+  color: var(--approval);
 }
 
 .events {
-  overflow-x: hidden;
+  height: 100%;
   overflow-y: auto;
-  padding: 12px 16px;
+  padding: 16px 24px;
 }
 .log {
   display: grid;
   gap: 12px;
+  max-width: 880px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -252,9 +463,9 @@ watch(tab, () => nextTick(moveIndicator))
     }
   }
   time {
+    padding-top: 2px;
     font-size: var(--fs-xs);
     color: var(--text-3);
-    padding-top: 2px;
   }
   p {
     margin: 0;
@@ -268,35 +479,18 @@ watch(tab, () => nextTick(moveIndicator))
   color: var(--text-2);
 }
 .empty {
-  max-width: 44ch;
   margin: 0;
   color: var(--text-3);
 }
 
-.foot {
-  display: flex;
-  gap: 16px;
-  padding: 6px 16px;
-  border-top: 1px solid var(--rule);
-  font-size: var(--fs-xs);
-  color: var(--text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  span:first-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
+@media (max-width: $bp-wide) {
+  .wf {
+    display: none;
   }
 }
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur) var(--ease-out);
-}
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(4px);
-}
-.fade-leave-to {
-  opacity: 0;
+@media (max-width: $bp-mid) {
+  .tools .ghost:not(.danger) {
+    display: none;
+  }
 }
 </style>

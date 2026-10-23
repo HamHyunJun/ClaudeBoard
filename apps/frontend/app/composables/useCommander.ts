@@ -37,7 +37,6 @@ export interface Commander {
   alerts: DeepReadonly<Ref<Alert[]>>
   lastError: DeepReadonly<Ref<string | null>>
   selectedId: Ref<string | null>
-  terminalOpen: Ref<boolean>
   openTargetId: Ref<string | null>
   seenDoneAt: Ref<Record<string, number>>
   sessionList: ComputedRef<SessionItem[]>
@@ -75,14 +74,8 @@ const sessions = ref<Record<string, SessionSnapshot>>({})
 const usage = ref<UsageSummary | null>(null)
 const alerts = ref<Alert[]>([])
 const selectedId = ref<string | null>(null)
-const terminalOpen = ref(false)
 // 폴더 열기 확인 대화상자의 대상 프로젝트 (null 이면 닫힘)
 const openTargetId = ref<string | null>(null)
-// 선택을 해제해도 터미널이 엉뚱한 세션으로 바뀌지 않도록 마지막 선택을 기억
-const lastSelectedId = ref<string | null>(null)
-watch(selectedId, (id) => {
-  if (id) lastSelectedId.value = id
-})
 // 사용자가 확인한 완료 시각. 세션을 선택하면 그 시점까지의 완료를 본 것으로 친다
 const seenDoneAt = ref<Record<string, number>>({})
 const lastError = ref<string | null>(null)
@@ -140,6 +133,11 @@ const handle = (msg: ServerMessage): void => {
       sessions.value = Object.fromEntries(msg.sessions.map((s) => [s.projectId, s]))
       usage.value = msg.usage
       alerts.value = msg.alerts
+      // 처음 접속하면 실행 중인 첫 세션(없으면 첫 프로젝트)을 중앙 터미널에 연다
+      if (!selectedId.value || !msg.projects.some((p) => p.id === selectedId.value)) {
+        const firstRunning = msg.sessions.find((s) => s.process === 'running')?.projectId
+        selectedId.value = firstRunning ?? msg.projects[0]?.id ?? null
+      }
       break
     case 'projects':
       projects.value = msg.projects
@@ -210,15 +208,8 @@ export function useCommander(): Commander {
     if (id && at) seenDoneAt.value[id] = at
   })
   const selected = computed(() => sessionList.value.find((x) => x.project.id === selectedId.value) ?? null)
-  /** 터미널 패널이 보여줄 세션: 선택 → 마지막 선택 → 실행 중인 첫 세션 → 첫 세션 */
-  const terminalTarget = computed(
-    () =>
-      selected.value ??
-      sessionList.value.find((x) => x.project.id === lastSelectedId.value) ??
-      sessionList.value.find((x) => x.session?.process === 'running') ??
-      sessionList.value[0] ??
-      null
-  )
+  /** 중앙 터미널이 보여줄 세션. 탭을 모두 닫으면 null(빈 화면) */
+  const terminalTarget = computed(() => selected.value)
   const counts = computed(() => {
     const c = { running: 0, busy: 0, approval: 0, asking: 0 }
     for (const s of Object.values(sessions.value)) {
@@ -255,7 +246,6 @@ export function useCommander(): Commander {
 
   const openTerminal = (id: string): void => {
     selectedId.value = id
-    terminalOpen.value = true
   }
 
   return {
@@ -267,7 +257,6 @@ export function useCommander(): Commander {
     alerts: readonly(alerts),
     lastError: readonly(lastError),
     selectedId,
-    terminalOpen,
     openTargetId,
     seenDoneAt,
     sessionList,
