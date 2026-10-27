@@ -205,15 +205,16 @@ watch(theme, () => nextTick(() => term && (term.options.theme = termTheme())))
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 10px 0 6px 12px;
   background: var(--ink-0);
   transition: opacity var(--dur) var(--ease-out);
   // 레이아웃은 유지해야 fit 이 크기를 잴 수 있으므로 display 가 아니라 opacity 로 가린다
   &.pending {
     opacity: 0;
   }
+  // FitAddon 은 부모 padding 을 빼지 않고 .xterm 자신의 padding 만 뺀다. 여백을 host 에 두면 한 줄 가까이 넘쳐 하단이 잘린다
   :deep(.xterm) {
     height: 100%;
+    padding: 10px 0 6px 12px;
   }
   :deep(.xterm-viewport) {
     background: transparent !important;
