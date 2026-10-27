@@ -74,6 +74,8 @@ useHead({
 .shell {
   display: grid;
   grid-template-columns: 288px minmax(0, 1fr);
+  // 행을 뷰포트 높이로 고정: auto 행은 터미널 내용만큼 늘어나 하단(상태줄)이 잘린다
+  grid-template-rows: minmax(0, 1fr);
   height: 100vh;
   height: 100dvh;
   overflow: hidden;

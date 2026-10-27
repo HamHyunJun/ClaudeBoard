@@ -23,24 +23,53 @@
         </div>
       </div>
 
-      <div v-if="item" class="tools">
-        <button class="tool ghost" type="button" @click="cmd.openTargetId.value = item.project.id">폴더 열기</button>
-        <template v-if="s.running.value">
-          <button class="tool ghost" type="button" title="Esc 키 전송: 현재 작업 중단" @click="interrupt">작업 중단</button>
-          <button class="tool ghost" type="button" @click="cmd.restart(item.project.id)">재시작</button>
-          <button class="tool" type="button" @click="cmd.stop(item.project.id)">중지</button>
-        </template>
-        <button v-else class="tool primary" type="button" @click="cmd.start(item.project.id)">시작</button>
+      <div v-if="item" ref="menuRoot" class="tools" @keydown.esc="closeMenu(true)">
         <button
-          class="tool ghost danger"
-          :class="{ armed: confirmRemove }"
+          class="menu-btn"
           type="button"
-          :aria-label="`${item.project.name} 프로젝트 삭제`"
-          @click="removeProject"
-          @blur="confirmRemove = false"
+          aria-haspopup="menu"
+          :aria-expanded="menuOpen"
+          :aria-label="`${item.project.name} 세션 메뉴`"
+          @click="menuOpen = !menuOpen"
         >
-          {{ confirmRemove ? '정말 삭제?' : '삭제' }}
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
         </button>
+        <Transition name="menu">
+          <ul v-if="menuOpen" class="menu" role="menu" :aria-label="`${item.project.name} 세션 메뉴`">
+            <li role="none">
+              <button role="menuitem" type="button" @click="runMenu(() => (cmd.openTargetId.value = item!.project.id))">폴더 열기</button>
+            </li>
+            <template v-if="s.running.value">
+              <li role="none">
+                <button role="menuitem" type="button" title="Esc 키 전송: 현재 작업 중단" @click="runMenu(interrupt)">작업 중단</button>
+              </li>
+              <li role="none">
+                <button role="menuitem" type="button" @click="runMenu(() => cmd.restart(item!.project.id))">재시작</button>
+              </li>
+              <li role="none">
+                <button role="menuitem" type="button" @click="runMenu(() => cmd.stop(item!.project.id))">중지</button>
+              </li>
+            </template>
+            <li v-else role="none">
+              <button role="menuitem" type="button" @click="runMenu(() => cmd.start(item!.project.id))">시작</button>
+            </li>
+            <li class="sep" role="separator" />
+            <li role="none">
+              <button
+                role="menuitem"
+                type="button"
+                class="danger"
+                :class="{ armed: confirmRemove }"
+                :aria-label="`${item.project.name} 프로젝트 삭제`"
+                @click="removeProject"
+              >
+                {{ confirmRemove ? '정말 삭제?' : '삭제' }}
+              </button>
+            </li>
+          </ul>
+        </Transition>
       </div>
     </header>
 
@@ -49,13 +78,6 @@
       <span class="state">{{ s.label.value }}<template v-if="s.elapsed.value"> · {{ s.elapsed.value }}</template></span>
       <span v-if="s.model.value" class="pill">{{ s.model.value }}</span>
       <span v-for="g in session?.git ?? []" :key="g.branch" class="git code" :title="gitTitle(g)">⎇ {{ g.branch }}<template v-if="gitDirty(g)"> ±{{ gitDirty(g) }}</template></span>
-      <WorkflowTrack
-        v-if="s.running.value"
-        class="wf"
-        :workflow="session?.workflow ?? { stage: null, percent: 0, source: 'none' }"
-        :status="s.status.value"
-        :busy-since="session?.busySince"
-      />
       <span class="nums">
         <span>{{ formatTokens(s.tokens.value) }} 토큰</span>
         <span>{{ formatCost(s.usage.value?.todayCost ?? 0) }}</span>
@@ -168,11 +190,34 @@ const interrupt = (): void => {
   xterm.value?.focus()
 }
 
+// 세션 도구 메뉴: 바깥을 누르거나 Esc 면 닫힌다
+const menuOpen = ref(false)
+const menuRoot = ref<HTMLElement>()
+
+const closeMenu = (refocus = false): void => {
+  if (!menuOpen.value) return
+  menuOpen.value = false
+  if (refocus) menuRoot.value?.querySelector<HTMLElement>('.menu-btn')?.focus()
+}
+const runMenu = (action: () => unknown): void => {
+  closeMenu()
+  action()
+}
+const onDocPointer = (e: PointerEvent): void => {
+  if (menuOpen.value && !menuRoot.value?.contains(e.target as Node)) closeMenu()
+}
+onMounted(() => document.addEventListener('pointerdown', onDocPointer))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
+watch(() => item.value?.project.id, () => closeMenu())
+
 // 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
 const confirmRemove = ref(false)
 let confirmTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(confirmTimer))
 watch(() => item.value?.project.id, () => (confirmRemove.value = false))
+watch(menuOpen, (open) => {
+  if (!open) confirmRemove.value = false
+})
 
 const removeProject = async (): Promise<void> => {
   const id = item.value?.project.id
@@ -184,6 +229,7 @@ const removeProject = async (): Promise<void> => {
   }
   clearTimeout(confirmTimer)
   confirmRemove.value = false
+  closeMenu()
   try {
     await cmd.removeProject(id)
     closeTab(id)
@@ -270,11 +316,86 @@ defineExpose({ focus: () => xterm.value?.focus() })
 }
 
 .tools {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
+  flex: none;
   margin-left: auto;
-  padding: 0 12px;
+  padding: 0 10px;
+  border-left: 1px solid var(--rule);
+}
+.menu-btn {
+  @include pressable;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--ink-2);
+    color: var(--text);
+  }
+}
+.menu {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 10px;
+  z-index: 20;
+  min-width: 150px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  background: var(--ink-1);
+  box-shadow: 0 6px 18px var(--shadow-soft);
+  transform-origin: top right;
+  button {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    text-align: left;
+    color: var(--text-2);
+    white-space: nowrap;
+    &:hover {
+      background: var(--ink-2);
+      color: var(--text);
+    }
+    &.danger {
+      color: var(--text-3);
+      &:hover {
+        color: var(--approval);
+      }
+      &.armed {
+        background: var(--approval-wash);
+        color: var(--approval);
+      }
+    }
+  }
+}
+.sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--rule);
+}
+.menu-enter-active,
+.menu-leave-active {
+  transition: opacity var(--dur, 0.15s) ease, transform var(--dur, 0.15s) var(--ease-out);
+}
+.menu-enter-from,
+.menu-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
 }
 .tool {
   @include pressable;
@@ -367,10 +488,6 @@ defineExpose({ focus: () => xterm.value?.focus() })
 }
 .git {
   color: var(--text-2);
-}
-.wf {
-  flex: 0 1 320px;
-  min-width: 200px;
 }
 .nums {
   display: flex;
@@ -483,14 +600,4 @@ defineExpose({ focus: () => xterm.value?.focus() })
   color: var(--text-3);
 }
 
-@media (max-width: $bp-wide) {
-  .wf {
-    display: none;
-  }
-}
-@media (max-width: $bp-mid) {
-  .tools .ghost:not(.danger) {
-    display: none;
-  }
-}
 </style>
