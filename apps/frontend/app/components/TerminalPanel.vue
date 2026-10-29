@@ -26,29 +26,6 @@
         </TransitionGroup>
       </div>
 
-      <Transition name="dock">
-      <div v-if="item && s.running.value && view === 'terminal' && speech.supported" class="voice-dock">
-        <Transition name="caption">
-        <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
-        </Transition>
-        <button
-          class="mic"
-          :class="{ on: speech.listening.value }"
-          type="button"
-          :disabled="s.status.value === 'REQUIRES_APPROVAL'"
-          :aria-pressed="speech.listening.value"
-          :aria-label="speech.listening.value ? '음성 입력 중지' : '음성으로 입력'"
-          :title="s.status.value === 'REQUIRES_APPROVAL' ? '승인 대기 중에는 음성 입력을 쓸 수 없습니다' : speech.listening.value ? '음성 입력 중지' : '음성으로 입력 (끝에 전송이라고 말하면 전송)'"
-          @click="speech.toggle()"
-        >
-          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
-            <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" />
-            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5V15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
-        </button>
-      </div>
-      </Transition>
-
       <div v-if="item" ref="menuRoot" class="tools" @keydown.esc="closeMenu(true)">
         <button
           class="menu-btn"
@@ -143,6 +120,29 @@
       </Transition>
 
     </div>
+
+      <Transition name="dock">
+      <div v-if="item && s.running.value && view === 'terminal' && speech.supported" class="voice-dock">
+        <button
+          class="mic"
+          :class="{ on: speech.listening.value }"
+          type="button"
+          :disabled="s.status.value === 'REQUIRES_APPROVAL'"
+          :aria-pressed="speech.listening.value"
+          :aria-label="speech.listening.value ? '음성 입력 중지' : '음성으로 입력'"
+          :title="s.status.value === 'REQUIRES_APPROVAL' ? '승인 대기 중에는 음성 입력을 쓸 수 없습니다' : speech.listening.value ? '음성 입력 중지' : '음성으로 입력 (끝에 전송이라고 말하면 전송)'"
+          @click="speech.toggle()"
+        >
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+            <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5V15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
+        <Transition name="caption">
+        <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
+        </Transition>
+      </div>
+      </Transition>
   </section>
 </template>
 
@@ -323,7 +323,7 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .work {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   background: var(--ink-0);
@@ -655,10 +655,10 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .voice-dock {
   display: flex;
   align-items: center;
-  flex: none;
-  gap: 8px;
-  max-width: 45%;
-  padding: 0 10px;
+  gap: 10px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--rule);
+  background: var(--ink-1);
 }
 // 마이크 버튼은 아래에서 스프링으로 떠오르며 나타나고, 말풍선은 버튼 쪽에서 밀려 나온다
 .dock-enter-active {
@@ -674,7 +674,7 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .dock-enter-from,
 .dock-leave-to {
   opacity: 0;
-  transform: scale(0.9);
+  transform: translateY(6px);
 }
 .caption-enter-active,
 .caption-leave-active {
@@ -685,7 +685,7 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .caption-enter-from,
 .caption-leave-to {
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(-8px);
 }
 .caption {
   margin: 0;
