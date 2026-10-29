@@ -653,10 +653,12 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 
 .voice-dock {
   position: absolute;
-  right: 24px;
+  left: 24px;
   bottom: 16px;
   z-index: 5;
   display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
   align-items: center;
   gap: 10px;
   max-width: calc(100% - 48px);
@@ -686,7 +688,7 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .caption-enter-from,
 .caption-leave-to {
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(-8px);
 }
 .caption {
   margin: 0;
