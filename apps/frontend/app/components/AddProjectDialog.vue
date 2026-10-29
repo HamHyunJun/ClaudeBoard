@@ -30,12 +30,14 @@
             <button type="button" class="up" :disabled="!listing?.parent" aria-label="상위 폴더" @click="browse(listing!.parent!)">↑</button>
             <code class="here" :title="listing?.path">{{ listing?.path ?? '…' }}</code>
           </div>
+          <input v-if="(listing?.dirs.length ?? 0) > 8" v-model="filter" class="filter" type="search" autocomplete="off" aria-label="폴더 이름 필터" placeholder="폴더 이름으로 찾기" />
           <ul ref="listEl" class="dirs" aria-label="하위 폴더">
-            <li v-for="d in listing?.dirs" :key="d">
+            <li v-for="d in shownDirs" :key="d">
               <button type="button" class="dir" @click="browse(listing!.path.replace(/\/$/, '') + '/' + d)">{{ d }}</button>
             </li>
           </ul>
           <p v-if="listing && !listing.dirs.length" class="empty">하위 폴더가 없습니다.</p>
+          <p v-else-if="listing && !shownDirs.length" class="empty">"{{ filter }}"와 맞는 폴더가 없습니다.</p>
           <p class="browse-error" role="alert">{{ browseError }}</p>
           <button type="button" class="btn primary pick" :disabled="!listing" @click="pick">이 폴더 선택</button>
         </div>
@@ -85,11 +87,17 @@ const browsing = ref(false)
 const listing = ref<DirListing | null>(null)
 const browseError = ref('')
 const listEl = ref<HTMLElement | null>(null)
+const filter = ref('')
+const shownDirs = computed(() => {
+  const q = filter.value.trim().toLowerCase()
+  return (listing.value?.dirs ?? []).filter((d) => d.toLowerCase().includes(q))
+})
 
 const browse = async (path?: string): Promise<void> => {
   browseError.value = ''
   try {
     listing.value = await cmd.listDirs(path)
+    filter.value = ''
     await nextTick()
     listEl.value?.scrollTo({ top: 0 })
   } catch (e) {
@@ -142,6 +150,7 @@ watch(
       error.value = ''
       browsing.value = false
       listing.value = null
+      filter.value = ''
       browseError.value = ''
     }
   }
@@ -229,11 +238,20 @@ h2 {
 }
 .dirs {
   display: grid;
-  max-height: 220px;
+  max-height: min(340px, 40vh);
   margin: 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
+}
+.filter {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background: var(--ink-0);
+  font-size: var(--fs-sm);
+  color: var(--text);
 }
 .dir {
   @include pressable;
