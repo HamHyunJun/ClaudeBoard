@@ -61,17 +61,30 @@ const badge = computed(() => {
     transform: scale(0.99);
   }
 
+  // 선택 배경은 사이드바의 슬라이딩 마커가 그리고, 여기서는 왼쪽 색 막대만 부드럽게 나타나고 사라진다
+  &::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--c);
+    opacity: 0;
+    transform: scaleY(0.4);
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur) var(--ease-out),
+      background-color var(--dur) var(--ease-out);
+  }
   &.active {
-    background: var(--ink-3);
+    &:hover {
+      background: transparent;
+    }
     &::before {
-      content: '';
-      position: absolute;
-      left: -10px;
-      top: 8px;
-      bottom: 8px;
-      width: 3px;
-      border-radius: 0 3px 3px 0;
-      background: var(--c);
+      opacity: 1;
+      transform: none;
     }
   }
 
