@@ -13,7 +13,7 @@
       </p>
     </main>
 
-    <CommandPalette :open="paletteOpen" @close="paletteOpen = false" @add-project="addOpen = true" @focus-prompt="focusTerminal" />
+    <CommandPalette :open="paletteOpen" :listen="voiceOpen" @close="closePalette" @add-project="addOpen = true" @focus-prompt="focusTerminal" />
     <AddProjectDialog :open="addOpen" @close="addOpen = false" />
     <OpenProjectDialog />
     <ToastStack />
@@ -28,6 +28,8 @@ const cmd = useCommander()
 const notify = useNotify()
 
 const paletteOpen = ref(false)
+// V 키로 열면 명령창이 바로 음성 인식을 시작한다
+const voiceOpen = ref(false)
 const addOpen = ref(false)
 const panel = ref<{ focus: () => void }>()
 
@@ -54,10 +56,24 @@ const focusTerminal = (id: string): void => {
   nextTick(() => setTimeout(() => panel.value?.focus(), 60))
 }
 
+const closePalette = (): void => {
+  paletteOpen.value = false
+  voiceOpen.value = false
+}
+
+const isTyping = (t: EventTarget | null): boolean => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+
 const onGlobalKey = (e: KeyboardEvent): void => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
-    paletteOpen.value = !paletteOpen.value
+    paletteOpen.value ? closePalette() : (paletteOpen.value = true)
+    return
+  }
+  // 한글 자판에서는 key 가 'ㅍ' 이므로 물리 키(code)로 판별한다. 터미널·입력창에 포커스가 있으면 글자 입력이 우선이다
+  if (e.code === 'KeyV' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.repeat && !isTyping(e.target) && !paletteOpen.value && !addOpen.value) {
+    e.preventDefault()
+    voiceOpen.value = true
+    paletteOpen.value = true
   }
 }
 

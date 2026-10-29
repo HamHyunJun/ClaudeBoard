@@ -68,10 +68,11 @@
  * ⌘K / Ctrl+K 글로벌 명령창.
  * - 일반 입력: 명령 검색 (combobox + listbox 패턴, ↑↓ 이동, Enter 실행)
  * - "@프로젝트 지시문" 입력: 해당 세션에 바로 프롬프트 전송
+ * - V 키(터미널·입력창 밖에서)로 열면 바로 음성 인식을 시작한다
  * - 마이크 버튼: 음성으로 같은 입력을 한다. "프로젝트이름 지시문"으로 말하면 "@이름 지시문"으로 바뀌고,
  *   명령과 맞지 않는 말은 현재 보고 있는 세션에 보낼 지시로 제안한다. 전송은 항상 Enter 로 확인한다
  */
-const props = defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean; listen?: boolean }>()
 const emit = defineEmits<{ close: []; addProject: []; focusPrompt: [id: string] }>()
 
 const cmd = useCommander()
@@ -196,6 +197,7 @@ watch(
     if (o) {
       query.value = ''
       active.value = 0
+      if (props.listen) speech.toggle()
     } else speech.stop()
   }
 )
