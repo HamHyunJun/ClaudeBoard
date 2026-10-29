@@ -4,8 +4,10 @@
     <ProjectSidebar class="area-side" @add="addOpen = true" @palette="paletteOpen = true" />
 
     <main id="workspace" class="area-main">
-      <div class="banner-slot">
-        <ApprovalBanner :except-id="cmd.terminalTarget.value?.project.id" />
+      <div class="banner-slot" :class="{ open: hasBanner }">
+        <div class="banner-scroll">
+          <ApprovalBanner class="banner-pad" :except-id="cmd.terminalTarget.value?.project.id" />
+        </div>
       </div>
       <TerminalPanel ref="panel" class="term" />
       <p v-if="cmd.conn.value === 'closed'" class="offline" role="status">
@@ -48,6 +50,9 @@ onBeforeUnmount(() => {
   offAlert?.()
   window.removeEventListener('keydown', onGlobalKey)
 })
+
+// ApprovalBanner 가 그리는 배너가 있는지 (지금 보는 세션의 승인 요청은 터미널에서 처리하므로 제외)
+const hasBanner = computed(() => cmd.pendingApprovals.value.some((x) => x.project.id !== cmd.terminalTarget.value?.project.id))
 
 /** 명령창의 "지시하기": 그 세션의 터미널을 열고 입력 포커스를 준다 */
 const focusTerminal = (id: string): void => {
@@ -128,16 +133,30 @@ useHead({
   min-height: 0;
 }
 
+// 승인 배너가 생기거나 사라질 때 터미널이 툭 밀리지 않도록 높이를 0fr ↔ 1fr 로 부드럽게 여닫는다
 .banner-slot {
   flex: none;
+  display: grid;
+  grid-template-rows: 0fr;
+  background: var(--ink-1);
+  // 테두리는 레이아웃 높이를 차지하지 않도록 그림자로 긋는다
+  box-shadow: 0 1px 0 transparent;
+  transition:
+    grid-template-rows var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
+  // 배너 요소가 사라지기를 기다리지 않고 상태(open)로 여닫아야 내용이 남아 있는 동안 높이가 함께 줄어든다
+  &.open {
+    grid-template-rows: 1fr;
+    box-shadow: 0 1px 0 var(--rule);
+  }
+}
+.banner-scroll {
+  min-height: 0;
   max-height: 40vh;
   overflow-y: auto;
-  padding: 0 16px;
-  background: var(--ink-1);
-  &:has(.banner) {
-    padding-block: 10px;
-    border-bottom: 1px solid var(--rule);
-  }
+}
+.banner-pad {
+  padding: 10px 16px;
 }
 
 .term {
