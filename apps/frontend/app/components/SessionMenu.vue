@@ -149,8 +149,9 @@ watch(open, (v) => {
 <style scoped lang="scss">
 .session-menu {
   position: absolute;
-  top: 6px;
+  top: 50%;
   right: 8px;
+  transform: translateY(-50%);
 }
 .menu-btn {
   @include pressable;
