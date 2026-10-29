@@ -30,6 +30,14 @@ export interface UseSpeech {
   stop: () => void
 }
 
+const SUBMIT = /(?:^|\s)(?:전송|엔터)(?:\s?(?:해\s?줘|해주세요|해))?[.!?]?$/
+
+/** 문장 끝의 "전송"·"엔터"(+해줘)를 전송 명령으로 떼어 낸다. 앞말과 띄어 말해야 하며 "데이터전송" 같은 붙은 말은 그대로 둔다 */
+export function splitSubmit(text: string): { text: string; submit: boolean } {
+  const m = SUBMIT.exec(text)
+  return m ? { text: text.slice(0, m.index).trim(), submit: true } : { text, submit: false }
+}
+
 const ERRORS: Record<string, string> = {
   'not-allowed': '마이크 권한이 필요합니다. 주소창의 사이트 설정에서 허용해 주세요.',
   'service-not-allowed': '마이크 권한이 필요합니다. 주소창의 사이트 설정에서 허용해 주세요.',
