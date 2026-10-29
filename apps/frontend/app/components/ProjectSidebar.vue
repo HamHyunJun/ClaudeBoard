@@ -89,6 +89,7 @@
     </form>
 
     <ol v-if="cmd.sessionList.value.length" ref="listEl" class="folders" aria-labelledby="folders-title" @keydown="onKeydown">
+      <li class="marker" :class="{ ready: markerReady }" :style="markerStyle" role="presentation" aria-hidden="true" />
       <TransitionGroup name="flip">
       <li
         v-for="item in cmd.sessionList.value"
@@ -270,6 +271,22 @@ const focusRow = (id: string): void => {
   listEl.value?.querySelector<HTMLButtonElement>(`[data-project="${CSS.escape(id)}"]`)?.focus()
 }
 
+// 선택된 줄의 배경은 줄마다 칠하지 않고 하나의 마커가 줄 사이를 미끄러져 이동한다
+const markerStyle = ref({ transform: 'translateY(0)', height: '0px', opacity: 0 })
+const markerReady = ref(false)
+
+const placeMarker = (): void => {
+  const id = cmd.terminalTarget.value?.project.id
+  const row = id ? listEl.value?.querySelector<HTMLElement>(`[data-project="${CSS.escape(id)}"]`)?.closest('li') : undefined
+  if (!row) {
+    markerStyle.value = { ...markerStyle.value, opacity: 0 }
+    return
+  }
+  markerStyle.value = { transform: `translateY(${row.offsetTop}px)`, height: `${row.offsetHeight}px`, opacity: 1 }
+  // 첫 배치는 위에서 흘러내려오지 않도록 트랜지션 없이 놓고, 다음 프레임부터 애니메이션을 켠다
+  if (!markerReady.value) requestAnimationFrame(() => (markerReady.value = true))
+}
+
 const onKeydown = (e: KeyboardEvent): void => {
   if ((e.target as HTMLElement).closest('input')) return
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
@@ -285,6 +302,12 @@ const onKeydown = (e: KeyboardEvent): void => {
   cmd.selectedId.value = ids[next]!
   focusRow(ids[next]!)
 }
+
+watch(
+  [() => cmd.terminalTarget.value?.project.id, () => cmd.sessionList.value.map((x) => x.project.id).join('|'), bulkMode],
+  () => nextTick(placeMarker),
+  { flush: 'post', immediate: true }
+)
 </script>
 
 <style scoped lang="scss">
@@ -470,6 +493,21 @@ const onKeydown = (e: KeyboardEvent): void => {
 }
 
 // 순서가 바뀌면 줄이 제자리로 미끄러지듯 이동하고(FLIP), 추가·삭제는 살짝 밀려 나타나고 사라진다
+// .folders li 규칙(position·margin)보다 우선하도록 자식 선택자로 올린다
+.folders > .marker {
+  position: absolute;
+  inset: 0 10px auto;
+  margin: 0;
+  border-radius: var(--r-md);
+  background: var(--ink-3);
+  pointer-events: none;
+  &.ready {
+    transition:
+      transform var(--dur-spring) var(--spring),
+      height var(--dur) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out);
+  }
+}
 .flip-move {
   transition: transform var(--dur-spring) var(--spring);
 }
