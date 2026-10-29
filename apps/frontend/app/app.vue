@@ -28,10 +28,10 @@ const cmd = useCommander()
 const notify = useNotify()
 
 const paletteOpen = ref(false)
-// V 키로 열면 명령창이 바로 음성 인식을 시작한다
+// Shift 두 번으로 열면 명령창이 바로 음성 인식을 시작한다
 const voiceOpen = ref(false)
 const addOpen = ref(false)
-const panel = ref<{ focus: () => void }>()
+const panel = ref<{ focus: () => void; toggleVoice: () => boolean }>()
 
 // 서버 알림 → 토스트 + 데스크톱 알림 (승인 요청은 상단 배너가 담당하므로 토스트 생략)
 // 핸들러는 모듈 전역에 남으므로, 해제하지 않으면 화면이 다시 마운트될 때마다(HMR 포함) 알림이 겹쳐 뜬다
@@ -61,7 +61,8 @@ const closePalette = (): void => {
   voiceOpen.value = false
 }
 
-const isTyping = (t: EventTarget | null): boolean => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+const DOUBLE_SHIFT_MS = 400
+let lastShift = 0
 
 const onGlobalKey = (e: KeyboardEvent): void => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -69,9 +70,14 @@ const onGlobalKey = (e: KeyboardEvent): void => {
     paletteOpen.value ? closePalette() : (paletteOpen.value = true)
     return
   }
-  // 한글 자판에서는 key 가 'ㅍ' 이므로 물리 키(code)로 판별한다. 터미널·입력창에 포커스가 있으면 글자 입력이 우선이다
-  if (e.code === 'KeyV' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.repeat && !isTyping(e.target) && !paletteOpen.value && !addOpen.value) {
-    e.preventDefault()
+  // Shift 만 두 번 빠르게 누르면 음성 입력 시작/중지. 글자를 입력하지 않는 키라 터미널에 포커스가 있어도 쓸 수 있다
+  if (e.key !== 'Shift') return void (lastShift = 0)
+  if (e.repeat || paletteOpen.value || addOpen.value) return
+  const now = performance.now()
+  if (now - lastShift > DOUBLE_SHIFT_MS) return void (lastShift = now)
+  lastShift = 0
+  // 터미널 음성 입력을 쓸 수 없는 상태면 명령창을 열어 듣는다
+  if (!panel.value?.toggleVoice()) {
     voiceOpen.value = true
     paletteOpen.value = true
   }
