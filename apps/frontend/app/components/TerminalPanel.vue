@@ -278,7 +278,14 @@ const gitDirty = (g: GitRepoState): number => g.staged + g.modified + g.untracke
 const gitTitle = (g: GitRepoState): string =>
   `스테이징 ${g.staged} · 수정 ${g.modified} · 추적 안 됨 ${g.untracked} · 푸시 안 함 ${g.ahead} · 받을 커밋 ${g.behind}`
 
-defineExpose({ focus: () => xterm.value?.focus() })
+/** 단축키용: 터미널에서 음성 입력을 켜고 끈다. 쓸 수 없는 상태(세션 꺼짐·승인 대기 등)면 false */
+const toggleVoice = (): boolean => {
+  const usable = !!item.value && s.running.value && view.value === 'terminal' && speech.supported && s.status.value !== 'REQUIRES_APPROVAL'
+  if (usable) speech.toggle()
+  return usable
+}
+
+defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 </script>
 
 <style scoped lang="scss">
