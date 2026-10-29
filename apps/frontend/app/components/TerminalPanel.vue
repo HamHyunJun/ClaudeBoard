@@ -26,54 +26,6 @@
         </TransitionGroup>
       </div>
 
-      <div v-if="item" ref="menuRoot" class="tools" @keydown.esc="closeMenu(true)">
-        <button
-          class="menu-btn"
-          type="button"
-          aria-haspopup="menu"
-          :aria-expanded="menuOpen"
-          :aria-label="`${item.project.name} 세션 메뉴`"
-          @click="menuOpen = !menuOpen"
-        >
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-          </svg>
-        </button>
-        <Transition name="menu">
-          <ul v-if="menuOpen" class="menu" role="menu" :aria-label="`${item.project.name} 세션 메뉴`">
-            <li role="none">
-              <button role="menuitem" type="button" @click="runMenu(() => (cmd.openTargetId.value = item!.project.id))">폴더 열기</button>
-            </li>
-            <template v-if="s.running.value">
-              <li role="none">
-                <button role="menuitem" type="button" title="Esc 키 전송: 현재 작업 중단" @click="runMenu(interrupt)">작업 중단</button>
-              </li>
-              <li role="none">
-                <button role="menuitem" type="button" @click="runMenu(() => cmd.restart(item!.project.id))">재시작</button>
-              </li>
-              <li role="none">
-                <button role="menuitem" type="button" @click="runMenu(() => cmd.stop(item!.project.id))">중지</button>
-              </li>
-            </template>
-            <li v-else role="none">
-              <button role="menuitem" type="button" @click="runMenu(() => cmd.start(item!.project.id))">시작</button>
-            </li>
-            <li class="sep" role="separator" />
-            <li role="none">
-              <button
-                role="menuitem"
-                type="button"
-                class="danger"
-                :class="{ armed: confirmRemove }"
-                :aria-label="`${item.project.name} 프로젝트 삭제`"
-                @click="removeProject"
-              >
-                {{ confirmRemove ? '정말 삭제?' : '삭제' }}
-              </button>
-            </li>
-          </ul>
-        </Transition>
-      </div>
     </header>
 
     <div v-if="item" class="meta" :class="s.tone.value">
@@ -251,60 +203,6 @@ watch(() => item.value?.project.id, () => (view.value = 'terminal'))
 
 /* ───────────── 도구 ───────────── */
 
-const interrupt = (): void => {
-  if (!item.value) return
-  cmd.input(item.value.project.id, '\x1b')
-  xterm.value?.focus()
-}
-
-// 세션 도구 메뉴: 바깥을 누르거나 Esc 면 닫힌다
-const menuOpen = ref(false)
-const menuRoot = ref<HTMLElement>()
-
-const closeMenu = (refocus = false): void => {
-  if (!menuOpen.value) return
-  menuOpen.value = false
-  if (refocus) menuRoot.value?.querySelector<HTMLElement>('.menu-btn')?.focus()
-}
-const runMenu = (action: () => unknown): void => {
-  closeMenu()
-  action()
-}
-const onDocPointer = (e: PointerEvent): void => {
-  if (menuOpen.value && !menuRoot.value?.contains(e.target as Node)) closeMenu()
-}
-onMounted(() => document.addEventListener('pointerdown', onDocPointer))
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
-watch(() => item.value?.project.id, () => closeMenu())
-
-// 실수로 지우지 않도록 두 번 눌러야 삭제: 첫 클릭은 확인 상태로 전환, 3초 뒤 자동 해제
-const confirmRemove = ref(false)
-let confirmTimer: ReturnType<typeof setTimeout> | undefined
-onBeforeUnmount(() => clearTimeout(confirmTimer))
-watch(() => item.value?.project.id, () => (confirmRemove.value = false))
-watch(menuOpen, (open) => {
-  if (!open) confirmRemove.value = false
-})
-
-const removeProject = async (): Promise<void> => {
-  const id = item.value?.project.id
-  if (!id) return
-  if (!confirmRemove.value) {
-    confirmRemove.value = true
-    confirmTimer = setTimeout(() => (confirmRemove.value = false), 3000)
-    return
-  }
-  clearTimeout(confirmTimer)
-  confirmRemove.value = false
-  closeMenu()
-  try {
-    await cmd.removeProject(id)
-    closeTab(id)
-  } catch (err) {
-    useNotify().toast({ level: 'warning', title: (err as Error).message })
-  }
-}
-
 const gitDirty = (g: GitRepoState): number => g.staged + g.modified + g.untracked
 const gitTitle = (g: GitRepoState): string =>
   `스테이징 ${g.staged} · 수정 ${g.modified} · 추적 안 됨 ${g.untracked} · 푸시 안 함 ${g.ahead} · 받을 커밋 ${g.behind}`
@@ -440,87 +338,6 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   }
 }
 
-.tools {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex: none;
-  padding: 0 10px;
-  border-left: 1px solid var(--rule);
-}
-.menu-btn {
-  @include pressable;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--text-2);
-  &:hover,
-  &[aria-expanded='true'] {
-    background: var(--ink-2);
-    color: var(--text);
-  }
-}
-.menu {
-  position: absolute;
-  top: calc(100% - 4px);
-  right: 10px;
-  z-index: 20;
-  min-width: 150px;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  border: 1px solid var(--rule);
-  border-radius: var(--r-sm);
-  background: var(--ink-1);
-  box-shadow: 0 6px 18px var(--shadow-soft);
-  transform-origin: top right;
-  button {
-    display: block;
-    width: 100%;
-    padding: 7px 10px;
-    border: 0;
-    border-radius: var(--r-sm);
-    background: transparent;
-    font-size: var(--fs-sm);
-    font-weight: 600;
-    text-align: left;
-    color: var(--text-2);
-    white-space: nowrap;
-    &:hover {
-      background: var(--ink-2);
-      color: var(--text);
-    }
-    &.danger {
-      color: var(--text-3);
-      &:hover {
-        color: var(--approval);
-      }
-      &.armed {
-        background: var(--approval-wash);
-        color: var(--approval);
-      }
-    }
-  }
-}
-.sep {
-  height: 1px;
-  margin: 4px 2px;
-  background: var(--rule);
-}
-.menu-enter-active,
-.menu-leave-active {
-  transition: opacity var(--dur, 0.15s) ease, transform var(--dur, 0.15s) var(--ease-out);
-}
-.menu-enter-from,
-.menu-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
-}
 .tool {
   @include pressable;
   display: inline-grid;

@@ -110,6 +110,7 @@
           @change="toggleChecked(item.project.id)"
         />
         <FolderRow :item="item" :active="cmd.terminalTarget.value?.project.id === item.project.id" @select="cmd.openTerminal(item.project.id)" />
+        <SessionMenu :item="item" />
       </li>
       </TransitionGroup>
     </ol>
