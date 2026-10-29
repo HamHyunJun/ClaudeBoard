@@ -102,7 +102,11 @@ const run = (action: () => unknown): void => {
   close()
   action()
 }
-const interrupt = (): void => cmd.input(props.item.project.id, '\x1b')
+const interrupt = (): void => {
+  cmd.input(props.item.project.id, '\x1b')
+  // 지금 터미널에 열려 있는 세션이면 입력을 이어서 할 수 있게 포커스를 돌려 준다
+  if (cmd.terminalTarget.value?.project.id === props.item.project.id) nextTick(() => document.querySelector<HTMLElement>('.xterm-helper-textarea')?.focus())
+}
 
 const removeProject = async (): Promise<void> => {
   if (!confirmRemove.value) {
