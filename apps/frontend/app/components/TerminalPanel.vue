@@ -26,6 +26,29 @@
         </TransitionGroup>
       </div>
 
+      <Transition name="dock">
+      <div v-if="item && s.running.value && view === 'terminal' && speech.supported" class="voice-dock">
+        <Transition name="caption">
+        <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
+        </Transition>
+        <button
+          class="mic"
+          :class="{ on: speech.listening.value }"
+          type="button"
+          :disabled="s.status.value === 'REQUIRES_APPROVAL'"
+          :aria-pressed="speech.listening.value"
+          :aria-label="speech.listening.value ? '음성 입력 중지' : '음성으로 입력'"
+          :title="s.status.value === 'REQUIRES_APPROVAL' ? '승인 대기 중에는 음성 입력을 쓸 수 없습니다' : speech.listening.value ? '음성 입력 중지' : '음성으로 입력 (끝에 전송이라고 말하면 전송)'"
+          @click="speech.toggle()"
+        >
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+            <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5V15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+      </Transition>
+
       <div v-if="item" ref="menuRoot" class="tools" @keydown.esc="closeMenu(true)">
         <button
           class="menu-btn"
@@ -119,28 +142,6 @@
       </div>
       </Transition>
 
-      <Transition name="dock">
-      <div v-if="item && s.running.value && view === 'terminal' && speech.supported" class="voice-dock">
-        <Transition name="caption">
-        <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
-        </Transition>
-        <button
-          class="mic"
-          :class="{ on: speech.listening.value }"
-          type="button"
-          :disabled="s.status.value === 'REQUIRES_APPROVAL'"
-          :aria-pressed="speech.listening.value"
-          :aria-label="speech.listening.value ? '음성 입력 중지' : '음성으로 입력'"
-          :title="s.status.value === 'REQUIRES_APPROVAL' ? '승인 대기 중에는 음성 입력을 쓸 수 없습니다' : speech.listening.value ? '음성 입력 중지' : '음성으로 입력 (끝에 전송이라고 말하면 전송)'"
-          @click="speech.toggle()"
-        >
-          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
-            <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" />
-            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5V15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
-        </button>
-      </div>
-      </Transition>
     </div>
   </section>
 </template>
@@ -339,6 +340,7 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .tabs {
   position: relative;
   display: flex;
+  flex: 1;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -443,7 +445,6 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   display: flex;
   align-items: center;
   flex: none;
-  margin-left: auto;
   padding: 0 10px;
   border-left: 1px solid var(--rule);
 }
@@ -652,16 +653,12 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 }
 
 .voice-dock {
-  position: absolute;
-  left: 24px;
-  bottom: 16px;
-  z-index: 5;
   display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-end;
   align-items: center;
-  gap: 10px;
-  max-width: calc(100% - 48px);
+  flex: none;
+  gap: 8px;
+  max-width: 45%;
+  padding: 0 10px;
 }
 // 마이크 버튼은 아래에서 스프링으로 떠오르며 나타나고, 말풍선은 버튼 쪽에서 밀려 나온다
 .dock-enter-active {
@@ -677,7 +674,7 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .dock-enter-from,
 .dock-leave-to {
   opacity: 0;
-  transform: translateY(10px) scale(0.9);
+  transform: scale(0.9);
 }
 .caption-enter-active,
 .caption-leave-active {
@@ -688,16 +685,13 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
 .caption-enter-from,
 .caption-leave-to {
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(8px);
 }
 .caption {
   margin: 0;
-  max-width: 44ch;
-  padding: 6px 12px;
+  min-width: 0;
+  max-width: 36ch;
   overflow: hidden;
-  border: 1px solid var(--rule);
-  border-radius: var(--r-sm);
-  background: var(--ink-1);
   font-size: var(--fs-sm);
   color: var(--text-2);
   text-overflow: ellipsis;
@@ -711,13 +705,12 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   display: grid;
   place-items: center;
   flex: none;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: 1px solid var(--rule);
   border-radius: 50%;
   background: var(--ink-2);
-  box-shadow: 0 4px 14px var(--shadow-soft);
   color: var(--text-2);
   &:hover:not(:disabled) {
     color: var(--text);
