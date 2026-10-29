@@ -2,6 +2,7 @@
   <section class="work" :aria-label="item ? `${item.project.name} 터미널` : '터미널'">
     <header class="tabbar">
       <div class="tabs" role="tablist" aria-label="열린 세션" @keydown="onTabKey">
+        <TransitionGroup name="tab">
         <div v-for="t in tabItems" :key="t.project.id" class="tab" :class="{ active: t.project.id === item?.project.id }">
           <button
             role="tab"
@@ -21,6 +22,7 @@
             </svg>
           </button>
         </div>
+        </TransitionGroup>
       </div>
 
       <div v-if="item" ref="menuRoot" class="tools" @keydown.esc="closeMenu(true)">
@@ -88,6 +90,7 @@
     </div>
 
     <div class="body">
+      <Transition name="screen" mode="out-in">
       <div v-if="!item" class="blank">
         <p class="blank-title">왼쪽에서 프로젝트 폴더를 고르세요</p>
         <p>고른 폴더의 Claude Code 화면이 여기에 그대로 열립니다.</p>
@@ -113,6 +116,7 @@
         <p v-if="session?.error" class="err">{{ session.error }}</p>
         <button class="tool primary big" type="button" @click="cmd.start(item.project.id)">세션 시작</button>
       </div>
+      </Transition>
 
       <div v-if="item && s.running.value && view === 'terminal' && speech.supported" class="voice-dock">
         <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
@@ -307,6 +311,7 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   background: var(--ink-1);
 }
 .tabs {
+  position: relative;
   display: flex;
   min-width: 0;
   overflow-x: auto;
@@ -318,11 +323,49 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   flex: none;
   border-right: 1px solid var(--rule);
   color: var(--text-2);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
   &.active {
     background: var(--ink-0);
     color: var(--text);
     box-shadow: inset 0 2px 0 var(--text-2);
   }
+}
+// 탭을 열고 닫거나 순서가 바뀔 때 옆 탭이 부드럽게 밀린다
+.tab-move {
+  transition: transform var(--dur-spring) var(--spring);
+}
+.tab-enter-active,
+.tab-leave-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+.tab-enter-from,
+.tab-leave-to {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+.tab-leave-active {
+  position: absolute;
+}
+// 세션을 바꾸면 이전 화면이 빠르게 사라지고 새 화면이 아래에서 떠오른다
+.screen-enter-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+.screen-leave-active {
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.screen-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.screen-leave-to {
+  opacity: 0;
 }
 .tab-btn {
   @include pressable;

@@ -89,6 +89,7 @@
     </form>
 
     <ol v-if="cmd.sessionList.value.length" ref="listEl" class="folders" aria-labelledby="folders-title" @keydown="onKeydown">
+      <TransitionGroup name="flip">
       <li
         v-for="item in cmd.sessionList.value"
         :key="item.project.id"
@@ -109,6 +110,7 @@
         />
         <FolderRow :item="item" :active="cmd.terminalTarget.value?.project.id === item.project.id" @select="cmd.openTerminal(item.project.id)" />
       </li>
+      </TransitionGroup>
     </ol>
     <div v-else class="empty">
       <p>관제할 프로젝트가 없습니다. Claude Code를 실행할 로컬 폴더를 추가하세요.</p>
@@ -467,7 +469,28 @@ const onKeydown = (e: KeyboardEvent): void => {
   }
 }
 
+// 순서가 바뀌면 줄이 제자리로 미끄러지듯 이동하고(FLIP), 추가·삭제는 살짝 밀려 나타나고 사라진다
+.flip-move {
+  transition: transform var(--dur-spring) var(--spring);
+}
+.flip-enter-active,
+.flip-leave-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+.flip-enter-from,
+.flip-leave-to {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.flip-leave-active {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+}
 .folders {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
