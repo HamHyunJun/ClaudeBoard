@@ -58,15 +58,23 @@ export function useSpeech(onText: (text: string, final: boolean) => void): UseSp
   const listening = ref(false)
   const error = ref('')
   let rec: Recognition | undefined
+  // 사용자가 끄기 전에는 브라우저가 인식을 끝내도(무음·시간 제한) 이어서 다시 시작한다
+  let wanted = false
+  let restartable = true
 
-  const stop = (): void => rec?.stop()
+  const stop = (): void => {
+    wanted = false
+    rec?.stop()
+  }
 
   const start = (): void => {
     if (!Ctor) return
     error.value = ''
+    wanted = true
+    restartable = true
     rec = new Ctor()
     rec.lang = 'ko-KR'
-    rec.continuous = false
+    rec.continuous = true
     rec.interimResults = true
     rec.onresult = (e) => {
       const last = e.results[e.results.length - 1]
@@ -75,8 +83,21 @@ export function useSpeech(onText: (text: string, final: boolean) => void): UseSp
     rec.onerror = (e) => {
       // 말이 없어 끝난 경우는 오류로 보지 않는다
       if (e.error !== 'no-speech' && e.error !== 'aborted') error.value = ERRORS[e.error] ?? `음성 인식 오류: ${e.error}`
+      // 권한·네트워크 오류나 오래 말이 없을 때는 무한 재시작하지 않는다
+      if (e.error !== 'aborted') restartable = false
     }
-    rec.onend = () => (listening.value = false)
+    rec.onend = () => {
+      if (wanted && restartable) {
+        try {
+          rec?.start()
+          return
+        } catch {
+          // 이미 시작 중이면 그대로 끝낸다
+        }
+      }
+      wanted = false
+      listening.value = false
+    }
     rec.start()
     listening.value = true
   }
