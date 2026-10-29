@@ -118,8 +118,11 @@
       </div>
       </Transition>
 
+      <Transition name="dock">
       <div v-if="item && s.running.value && view === 'terminal' && speech.supported" class="voice-dock">
+        <Transition name="caption">
         <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
+        </Transition>
         <button
           class="mic"
           :class="{ on: speech.listening.value }"
@@ -136,6 +139,7 @@
           </svg>
         </button>
       </div>
+      </Transition>
     </div>
   </section>
 </template>
@@ -623,6 +627,33 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   align-items: center;
   gap: 10px;
   max-width: calc(100% - 48px);
+}
+// 마이크 버튼은 아래에서 스프링으로 떠오르며 나타나고, 말풍선은 버튼 쪽에서 밀려 나온다
+.dock-enter-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur-spring) var(--spring);
+}
+.dock-leave-active {
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.dock-enter-from,
+.dock-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.9);
+}
+.caption-enter-active,
+.caption-leave-active {
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+.caption-enter-from,
+.caption-leave-to {
+  opacity: 0;
+  transform: translateX(8px);
 }
 .caption {
   margin: 0;
