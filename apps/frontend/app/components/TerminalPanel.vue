@@ -123,7 +123,7 @@
           :disabled="s.status.value === 'REQUIRES_APPROVAL'"
           :aria-pressed="speech.listening.value"
           :aria-label="speech.listening.value ? '음성 입력 중지' : '음성으로 입력'"
-          :title="s.status.value === 'REQUIRES_APPROVAL' ? '승인 대기 중에는 음성 입력을 쓸 수 없습니다' : speech.listening.value ? '음성 입력 중지' : '음성으로 입력 (말한 뒤 Enter로 전송)'"
+          :title="s.status.value === 'REQUIRES_APPROVAL' ? '승인 대기 중에는 음성 입력을 쓸 수 없습니다' : speech.listening.value ? '음성 입력 중지' : '음성으로 입력 (끝에 전송이라고 말하면 전송)'"
           @click="speech.toggle()"
         >
           <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
@@ -155,13 +155,17 @@ const events = computed(() => cmd.alerts.value.filter((a) => a.projectId === ite
 // 한 번이라도 출력이 있었던 세션은 종료 뒤에도 마지막 화면을 보여준다
 const hasScreen = computed(() => s.running.value || session.value?.process === 'exited')
 
-// 음성 입력: 확정된 문장을 Claude 입력창에 타이핑만 하고 전송(Enter)은 사용자가 한다
+// 음성 입력: 확정된 문장을 Claude 입력창에 타이핑하고, 문장 끝에 "전송"이라고 말하면 Enter 까지 보낸다
+// ("전송"만 말하면 앞서 입력해 둔 내용을 전송)
 const interim = ref('')
 const speech = useSpeech((text, final) => {
   const id = item.value?.project.id
   if (!final || !id) return (interim.value = text)
   interim.value = ''
-  if (text) cmd.input(id, text.replace(/[\r\n]+/g, ' '))
+  const { text: body, submit } = splitSubmit(text)
+  if (submit && body) cmd.prompt(id, body)
+  else if (submit) cmd.input(id, '\r')
+  else if (body) cmd.input(id, body.replace(/[\r\n]+/g, ' '))
   xterm.value?.focus()
 })
 const caption = computed(() => speech.error.value || (speech.listening.value ? interim.value || '듣고 있습니다…' : ''))

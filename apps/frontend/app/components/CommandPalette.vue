@@ -70,7 +70,7 @@
  * - "@프로젝트 지시문" 입력: 해당 세션에 바로 프롬프트 전송
  * - V 키(터미널·입력창 밖에서)로 열면 바로 음성 인식을 시작한다
  * - 마이크 버튼: 음성으로 같은 입력을 한다. "프로젝트이름 지시문"으로 말하면 "@이름 지시문"으로 바뀌고,
- *   명령과 맞지 않는 말은 현재 보고 있는 세션에 보낼 지시로 제안한다. 전송은 항상 Enter 로 확인한다
+ *   명령과 맞지 않는 말은 현재 보고 있는 세션에 보낼 지시로 제안한다. 지시 전송은 Enter 로 하거나 끝에 "전송"이라고 말한다
  */
 const props = defineProps<{ open: boolean; listen?: boolean }>()
 const emit = defineEmits<{ close: []; addProject: []; focusPrompt: [id: string] }>()
@@ -100,7 +100,13 @@ const toQuery = (text: string): string => {
   }
   return text
 }
-const speech = useSpeech((text, final) => (query.value = final ? toQuery(text) : text))
+const speech = useSpeech((text, final) => {
+  if (!final) return (query.value = text)
+  // 끝에 "전송"이라고 말하면 지시 보내기 항목을 바로 실행한다 (명령 항목은 안전을 위해 Enter 로 확인)
+  const { text: body, submit } = splitSubmit(text)
+  query.value = toQuery(body)
+  if (submit) nextTick(() => items.value[0]?.id.startsWith('send-') && run(items.value[0]))
+})
 
 const sendItem = (project: { id: string; name: string }, running: boolean, text: string): Item => ({
   id: `send-${project.id}`,
