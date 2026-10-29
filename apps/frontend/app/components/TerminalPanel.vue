@@ -1,7 +1,8 @@
 <template>
   <section class="work" :aria-label="item ? `${item.project.name} 터미널` : '터미널'">
     <header class="tabbar">
-      <div class="tabs" role="tablist" aria-label="열린 세션" @keydown="onTabKey">
+      <div ref="tabsEl" class="tabs" role="tablist" aria-label="열린 세션" @keydown="onTabKey">
+        <span class="tab-marker" :class="{ ready: tabMarkerReady }" :style="tabMarkerStyle" aria-hidden="true" />
         <TransitionGroup name="tab">
         <div v-for="t in tabItems" :key="t.project.id" class="tab" :class="{ active: t.project.id === item?.project.id }">
           <button
@@ -212,6 +213,22 @@ const closeTab = (id: string): void => {
   openIds.value = rest
 }
 
+const tabsEl = ref<HTMLElement>()
+const tabMarkerStyle = ref<Record<string, string | number>>({ opacity: 0 })
+const tabMarkerReady = ref(false)
+
+const placeTabMarker = (): void => {
+  const id = item.value?.project.id
+  const tab = id ? tabsEl.value?.querySelector<HTMLElement>(`[data-tab="${CSS.escape(id)}"]`)?.closest<HTMLElement>('.tab') : undefined
+  if (!tab) {
+    tabMarkerStyle.value = { ...tabMarkerStyle.value, opacity: 0 }
+    return
+  }
+  tabMarkerStyle.value = { transform: `translateX(${tab.offsetLeft}px)`, width: `${tab.offsetWidth}px`, opacity: 1 }
+  // 첫 배치는 옆에서 밀려오지 않도록 트랜지션 없이 놓고, 다음 프레임부터 애니메이션을 켠다
+  if (!tabMarkerReady.value) requestAnimationFrame(() => (tabMarkerReady.value = true))
+}
+
 const onTabKey = (e: KeyboardEvent): void => {
   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
   const ids = tabItems.value.map((x) => x.project.id)
@@ -222,6 +239,11 @@ const onTabKey = (e: KeyboardEvent): void => {
   cmd.openTerminal(next)
   nextTick(() => document.querySelector<HTMLElement>(`[data-tab="${CSS.escape(next)}"]`)?.focus())
 }
+
+watch(() => [item.value?.project.id, tabItems.value.map((x) => x.project.id).join()], () => nextTick(placeTabMarker), {
+  flush: 'post',
+  immediate: true
+})
 
 // 다른 세션으로 바꾸면 터미널 보기로 돌아간다
 watch(() => item.value?.project.id, () => (view.value = 'terminal'))
@@ -325,16 +347,27 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   display: flex;
   align-items: center;
   flex: none;
+  position: relative;
+  z-index: 1;
   border-right: 1px solid var(--rule);
   color: var(--text-2);
-  transition:
-    background-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out);
   &.active {
-    background: var(--ink-0);
     color: var(--text);
-    box-shadow: inset 0 2px 0 var(--text-2);
+  }
+}
+// 선택된 탭 표시(배경 + 윗선)는 탭마다 칠하지 않고 하나가 탭 사이를 미끄러진다
+.tab-marker {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ink-0);
+  box-shadow: inset 0 2px 0 var(--text-2);
+  pointer-events: none;
+  &.ready {
+    transition:
+      transform var(--dur-spring) var(--spring),
+      width var(--dur-spring) var(--spring),
+      opacity var(--dur) var(--ease-out);
   }
 }
 // 탭을 열고 닫거나 순서가 바뀔 때 옆 탭이 부드럽게 밀린다
