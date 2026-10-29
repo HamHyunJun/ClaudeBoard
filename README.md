@@ -21,6 +21,7 @@ ClaudeBoard는 이 세 가지를 한 화면에서 해결하는 "관제탑"입니
 | 세션 관리 | 등록한 디렉터리마다 Claude Code를 백그라운드 PTY로 띄우고 유지합니다. 시작·중지·재시작을 지원하며, 브라우저를 닫아도 세션은 계속 돕니다. |
 | 세션 메뉴 | 터미널 헤더 오른쪽 ☰ 버튼에 폴더 열기·작업 중단(Esc 전송)·재시작·중지·시작·삭제를 모았습니다. 바깥을 누르거나 Esc로 닫고, 삭제는 두 번 눌러야 실행됩니다. |
 | 지시 | 중앙 터미널에 바로 입력합니다. ⌘K에서 `@프로젝트 지시문`으로 다른 세션에 보낼 수도 있습니다. |
+| 음성 명령 | ⌘K 명령창의 마이크 버튼으로 말해서 명령합니다(한국어). "프로젝트이름 지시문"으로 말하면 그 세션에 보낼 지시로, 명령 이름("재시작" 등)이면 명령 검색으로, 어느 쪽도 아니면 지금 보고 있는 세션에 보낼 지시로 바뀝니다. 전송은 항상 Enter로 확인합니다. 브라우저 내장 음성 인식(Web Speech API)을 쓰며 Chrome 계열에서 동작합니다. |
 | 일괄 지시 | 사이드바 **일괄**을 켜면 폴더마다 체크박스가 생깁니다. 체크한 세션 중 실행 중인 것에만 같은 지시(직접 입력 또는 퀵 액션)를 동시에 보내고, 꺼진 세션은 건너뛴 뒤 결과를 토스트로 알립니다. |
 | 터미널 | 중앙 전체를 쓰는 xterm.js로 실시간 출력을 보고 키보드로 직접 조작합니다. 열어 둔 세션은 탭으로 오가며, 다시 접속하면 최근 512KB가 재생됩니다. |
 | 상태 추적 | `IDLE`(대기) / `THINKING`(추론) / `EXECUTING`(파일 수정·Bash, 주황 바) / `REQUIRES_APPROVAL`(승인 대기) 4단계를 판정해 색과 펄스로 표시합니다. |
@@ -102,7 +103,7 @@ claudeboard/
 ├── apps/frontend/            Nuxt 4 SPA (Vue 3 Composition API, TypeScript, Scoped SCSS)
 │   └── app/
 │       ├── app.vue           화면 골격과 전역 단축키
-│       ├── composables/      useCommander(WebSocket·전역 상태), useSessionState(세션 표시 상태), useNotify, useNow
+│       ├── composables/      useCommander(WebSocket·전역 상태), useSessionState(세션 표시 상태), useSpeech(음성 인식), useNotify, useNow
 │       ├── components/       ProjectSidebar/FolderRow(폴더 목록·한도), TerminalPanel/XtermView(탭·전체 터미널·세션 메뉴),
 │       │                     ApprovalBanner, CommandPalette, BaseDialog 등
 │       ├── assets/styles/    디자인 토큰과 전역 스타일
@@ -217,6 +218,7 @@ Claude Code 화면 문구가 바뀌어 상태가 잘못 나오면 `apps/backend/
 
 ## 알려진 한계
 
+- 음성 명령은 브라우저 내장 음성 인식을 씁니다. Chrome 계열은 인식을 위해 음성을 브라우저 제공사 서버로 보내고, Firefox는 지원하지 않아 마이크 버튼이 보이지 않습니다. 마이크 권한을 허용해야 합니다.
 - 상태 판정은 Claude Code의 화면 문구에 의존합니다. CLI 업데이트로 문구가 바뀌면 패턴을 갱신해야 합니다.
 - 비용은 API 단가로 환산한 추정치라 실제 청구액과 다를 수 있습니다. 한도는 공식 사용률 조회에 성공하면 계정 값을, 실패하면 로그 합산 추정치를 보여 줍니다.
 - PTY 크기는 세션당 하나라서, 여러 브라우저가 같은 터미널을 크기가 다르게 열면 마지막에 리사이즈한 쪽 크기를 따릅니다.

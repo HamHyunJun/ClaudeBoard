@@ -18,8 +18,26 @@
           autofocus
           @keydown="onKey"
         />
+        <button
+          v-if="speech.supported"
+          class="mic"
+          :class="{ on: speech.listening.value }"
+          type="button"
+          :aria-pressed="speech.listening.value"
+          :aria-label="speech.listening.value ? '음성 입력 중지' : '음성으로 명령하기'"
+          :title="speech.listening.value ? '음성 입력 중지' : '음성으로 명령하기'"
+          @click="speech.toggle()"
+        >
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5V15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
         <kbd>esc</kbd>
       </div>
+      <p v-if="speech.listening.value || speech.error.value" class="voice" :class="{ err: speech.error.value }" role="status">
+        {{ speech.error.value || '듣고 있습니다… 프로젝트 이름으로 시작하면 그 세션에, 아니면 명령 검색이나 현재 세션 지시로 쓰입니다.' }}
+      </p>
 
       <div id="cp-list" class="list" role="listbox" aria-label="명령">
         <template v-for="[group, entries] in groups" :key="group">
@@ -50,6 +68,8 @@
  * ⌘K / Ctrl+K 글로벌 명령창.
  * - 일반 입력: 명령 검색 (combobox + listbox 패턴, ↑↓ 이동, Enter 실행)
  * - "@프로젝트 지시문" 입력: 해당 세션에 바로 프롬프트 전송
+ * - 마이크 버튼: 음성으로 같은 입력을 한다. "프로젝트이름 지시문"으로 말하면 "@이름 지시문"으로 바뀌고,
+ *   명령과 맞지 않는 말은 현재 보고 있는 세션에 보낼 지시로 제안한다. 전송은 항상 Enter 로 확인한다
  */
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; addProject: []; focusPrompt: [id: string] }>()
@@ -68,6 +88,27 @@ interface Item {
 const query = ref('')
 const active = ref(0)
 
+/** 음성 인식 결과를 입력으로 바꾼다: 첫머리가 프로젝트 이름이면 "@이름 나머지" 형식으로 */
+const toQuery = (text: string): string => {
+  const words = text.split(/\s+/)
+  const norm = (s: string): string => s.toLowerCase().replace(/[\s_-]/g, '')
+  for (const { project } of cmd.sessionList.value) {
+    for (let k = 1; k < words.length; k++) {
+      if (norm(words.slice(0, k).join('')) === norm(project.name)) return `@${project.name} ${words.slice(k).join(' ')}`
+    }
+  }
+  return text
+}
+const speech = useSpeech((text, final) => (query.value = final ? toQuery(text) : text))
+
+const sendItem = (project: { id: string; name: string }, running: boolean, text: string): Item => ({
+  id: `send-${project.id}`,
+  group: '지시 보내기',
+  label: `${project.name}에 보내기: ${text}`,
+  hint: running ? 'Enter' : '꺼져 있음',
+  run: () => (running ? cmd.prompt(project.id, text) : notify.toast({ level: 'warning', title: `${project.name} 세션이 꺼져 있습니다` }))
+})
+
 const items = computed<Item[]>(() => {
   const list: Item[] = []
   const q = query.value.trim()
@@ -77,14 +118,7 @@ const items = computed<Item[]>(() => {
   if (at) {
     for (const { project, session } of cmd.sessionList.value) {
       if (!project.name.toLowerCase().includes(at[1]!.toLowerCase())) continue
-      const running = session?.process === 'running'
-      list.push({
-        id: `send-${project.id}`,
-        group: '지시 보내기',
-        label: `${project.name}에 보내기: ${at[2]}`,
-        hint: running ? 'Enter' : '꺼져 있음',
-        run: () => (running ? cmd.prompt(project.id, at[2]!) : notify.toast({ level: 'warning', title: `${project.name} 세션이 꺼져 있습니다` }))
-      })
+      list.push(sendItem(project, session?.process === 'running', at[2]!))
     }
     return list
   }
@@ -118,7 +152,11 @@ const items = computed<Item[]>(() => {
 
   if (!q) return list
   const terms = q.toLowerCase().split(/\s+/)
-  return list.filter((i) => terms.every((t) => `${i.label} ${i.group}`.toLowerCase().includes(t)))
+  const found = list.filter((i) => terms.every((t) => `${i.label} ${i.group}`.toLowerCase().includes(t)))
+  // 어떤 명령과도 맞지 않는 말(주로 음성)은 지금 보고 있는 세션에 보낼 지시로 제안한다
+  const cur = cmd.terminalTarget.value
+  if (!found.length && cur) return [sendItem(cur.project, cur.session?.process === 'running', q)]
+  return found
 })
 
 const groups = computed(() => {
@@ -158,7 +196,7 @@ watch(
     if (o) {
       query.value = ''
       active.value = 0
-    }
+    } else speech.stop()
   }
 )
 
@@ -167,8 +205,8 @@ watch(active, (i) => nextTick(() => document.getElementById(`cp-opt-${i}`)?.scro
 
 <style scoped lang="scss">
 .palette {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   max-height: min(520px, 70vh);
 }
 .search {
@@ -193,7 +231,49 @@ watch(active, (i) => nextTick(() => document.getElementById(`cp-opt-${i}`)?.scro
     }
   }
 }
+.mic {
+  @include pressable;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-2);
+  &:hover {
+    background: var(--ink-2);
+    color: var(--text);
+  }
+  &.on {
+    background: var(--approval-wash);
+    color: var(--approval);
+    animation: mic-pulse 1.4s var(--ease-out) infinite;
+  }
+}
+@keyframes mic-pulse {
+  from {
+    box-shadow: 0 0 0 0 var(--approval-wash);
+  }
+  to {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+.voice {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  &.err {
+    color: var(--approval);
+  }
+}
 .list {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 6px;
 }
