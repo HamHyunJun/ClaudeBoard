@@ -113,6 +113,25 @@
         <p v-if="session?.error" class="err">{{ session.error }}</p>
         <button class="tool primary big" type="button" @click="cmd.start(item.project.id)">세션 시작</button>
       </div>
+
+      <div v-if="item && s.running.value && view === 'terminal' && speech.supported" class="voice-dock">
+        <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
+        <button
+          class="mic"
+          :class="{ on: speech.listening.value }"
+          type="button"
+          :disabled="s.status.value === 'REQUIRES_APPROVAL'"
+          :aria-pressed="speech.listening.value"
+          :aria-label="speech.listening.value ? '음성 입력 중지' : '음성으로 입력'"
+          :title="s.status.value === 'REQUIRES_APPROVAL' ? '승인 대기 중에는 음성 입력을 쓸 수 없습니다' : speech.listening.value ? '음성 입력 중지' : '음성으로 입력 (말한 뒤 Enter로 전송)'"
+          @click="speech.toggle()"
+        >
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+            <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5V15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
     </div>
   </section>
 </template>
@@ -135,6 +154,19 @@ const xterm = ref<{ focus: () => void }>()
 const events = computed(() => cmd.alerts.value.filter((a) => a.projectId === item.value?.project.id))
 // 한 번이라도 출력이 있었던 세션은 종료 뒤에도 마지막 화면을 보여준다
 const hasScreen = computed(() => s.running.value || session.value?.process === 'exited')
+
+// 음성 입력: 확정된 문장을 Claude 입력창에 타이핑만 하고 전송(Enter)은 사용자가 한다
+const interim = ref('')
+const speech = useSpeech((text, final) => {
+  const id = item.value?.project.id
+  if (!final || !id) return (interim.value = text)
+  interim.value = ''
+  if (text) cmd.input(id, text.replace(/[\r\n]+/g, ' '))
+  xterm.value?.focus()
+})
+const caption = computed(() => speech.error.value || (speech.listening.value ? interim.value || '듣고 있습니다…' : ''))
+// 세션을 바꾸거나 승인 대기로 넘어가면 듣기를 멈춘다
+watch(() => [item.value?.project.id, s.status.value === 'REQUIRES_APPROVAL'], () => speech.stop())
 
 const isRunning = (x: SessionItem): boolean => x.session?.process === 'running' || x.session?.process === 'starting'
 
@@ -526,6 +558,68 @@ defineExpose({ focus: () => xterm.value?.focus() })
   position: relative;
   min-width: 0;
   min-height: 0;
+}
+
+.voice-dock {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 48px);
+}
+.caption {
+  margin: 0;
+  max-width: 44ch;
+  padding: 6px 12px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  background: var(--ink-1);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  &.err {
+    color: var(--approval);
+  }
+}
+.mic {
+  @include pressable;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--ink-2);
+  box-shadow: 0 4px 14px var(--shadow-soft);
+  color: var(--text-2);
+  &:hover:not(:disabled) {
+    color: var(--text);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  &.on {
+    border-color: var(--approval);
+    background: var(--approval-wash);
+    color: var(--approval);
+    animation: mic-pulse 1.4s var(--ease-out) infinite;
+  }
+}
+@keyframes mic-pulse {
+  from {
+    box-shadow: 0 0 0 0 var(--approval-wash);
+  }
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
 }
 
 .blank {
