@@ -17,7 +17,7 @@ ClaudeBoard는 이 세 가지를 한 화면에서 해결하는 "관제탑"입니
 ## 주요 기능
 
 - **세션 관리**: 등록한 디렉터리마다 Claude Code를 백그라운드 PTY로 띄우고 유지합니다. 시작·중지·재시작을 지원하며, 브라우저를 닫아도 세션은 계속 돕니다.
-- **세션 메뉴**: 터미널 헤더 오른쪽 ☰ 버튼에 폴더 열기·작업 중단(Esc 전송)·재시작·중지·시작·삭제를 모았습니다. 바깥을 누르거나 Esc로 닫고, 삭제는 두 번 눌러야 실행됩니다.
+- **세션 메뉴**: 사이드바 각 폴더 줄 오른쪽 끝의 ☰ 버튼에 폴더 열기·작업 중단(Esc 전송)·재시작·중지·시작·삭제를 모았습니다. 바깥을 누르거나 Esc로 닫고, 삭제는 두 번 눌러야 실행됩니다.
 - **지시**: 중앙 터미널에 바로 입력합니다. ⌘K에서 `@프로젝트 지시문`으로 다른 세션에 보낼 수도 있습니다.
 - **음성 입력**: 터미널 아래 입력줄의 마이크 버튼을 누르고 말하면(한국어) 인식된 문장이 Claude 입력창에 타이핑됩니다. 문장 끝에 "전송"(또는 "엔터")이라고 말하면 Enter까지 보내고, "전송"만 말하면 앞서 입력해 둔 내용을 보냅니다. 말을 마치고 Enter를 직접 눌러도 됩니다. 앞말과 띄어 말해야 하며 "데이터전송"처럼 붙은 말은 일반 글자로 입력됩니다. 승인 대기 중에는 메뉴 키 입력과 섞이지 않도록 버튼이 비활성화됩니다.
 - **음성 명령**: ⌘K 명령창의 마이크 버튼으로 말해서 명령합니다(한국어). "프로젝트이름 지시문"으로 말하면 그 세션에 보낼 지시로, 명령 이름("재시작" 등)이면 명령 검색으로, 어느 쪽도 아니면 지금 보고 있는 세션에 보낼 지시로 바뀝니다. 지시 전송은 Enter로 하거나 끝에 "전송"이라고 말합니다(명령 항목은 안전을 위해 항상 Enter로 확인). 브라우저 내장 음성 인식(Web Speech API)을 쓰며 Chrome 계열에서 동작합니다.
@@ -38,7 +38,7 @@ ClaudeBoard는 이 세 가지를 한 화면에서 해결하는 "관제탑"입니
 | | |
 | --- | --- |
 | ![작업 중](docs/screenshots/2-working.png)<br>**작업 중**: 실행 중인 세션은 주황 펄스와 도구 이름으로 표시됩니다. | ![작업 완료](docs/screenshots/7-done.png)<br>**작업 완료**: 대기로 돌아오면 완료 토스트가 뜹니다. |
-| ![세션 메뉴](docs/screenshots/4-terminal.png)<br>**세션 메뉴**: 터미널 헤더 ☰ 버튼에 세션 도구를 모았습니다. | ![명령 팔레트](docs/screenshots/6-palette.png)<br>**명령 팔레트**: ⌘K로 세션 제어와 `@프로젝트 지시문`을 실행합니다. |
+| ![세션 메뉴](docs/screenshots/4-terminal.png)<br>**세션 메뉴**: 폴더 줄의 ☰ 버튼에 세션 도구를 모았습니다. | ![명령 팔레트](docs/screenshots/6-palette.png)<br>**명령 팔레트**: ⌘K로 세션 제어와 `@프로젝트 지시문`을 실행합니다. |
 
 모바일 폭에서는 폴더 목록이 위, 터미널이 아래로 쌓입니다.
 
@@ -106,7 +106,7 @@ claudeboard/
 │   └── app/
 │       ├── app.vue           화면 골격과 전역 단축키
 │       ├── composables/      useCommander(WebSocket·전역 상태), useSessionState(세션 표시 상태), useSpeech(음성 인식), useNotify, useNow
-│       ├── components/       ProjectSidebar/FolderRow(폴더 목록·한도), TerminalPanel/XtermView(탭·전체 터미널·세션 메뉴),
+│       ├── components/       ProjectSidebar/FolderRow(폴더 목록·한도), SessionMenu(세션 메뉴), TerminalPanel/XtermView(탭·전체 터미널),
 │       │                     ApprovalBanner, CommandPalette, BaseDialog 등
 │       ├── assets/styles/    디자인 토큰과 전역 스타일
 │       └── utils/format.ts   숫자·시간·상태 라벨 포맷

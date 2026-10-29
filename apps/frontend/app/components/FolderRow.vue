@@ -10,7 +10,6 @@
     <StatusPulse class="pulse" :status="s.status.value" :offline="!s.running.value" />
     <span class="name">{{ item.project.name }}</span>
     <span v-if="badge" class="badge">{{ badge }}</span>
-    <span v-else class="tok">{{ formatTokens(s.tokens.value) }}</span>
     <span class="sub">
       <span class="st">{{ s.label.value }}</span>
       <template v-if="s.running.value">
@@ -25,7 +24,7 @@
 <script setup lang="ts">
 import type { SessionItem } from '~/composables/useCommander'
 
-/** 사이드바의 프로젝트 폴더 한 줄: 상태 펄스, 이름, 오늘 토큰(또는 승인·답변 배지), 상태 요약 */
+/** 사이드바의 프로젝트 폴더 한 줄: 상태 펄스, 이름, 승인·답변 배지, 상태 요약. 오른쪽 끝은 SessionMenu(☰) 자리 */
 const props = defineProps<{ item: SessionItem; active: boolean }>()
 const emit = defineEmits<{ select: [] }>()
 
@@ -49,7 +48,8 @@ const badge = computed(() => {
   column-gap: 10px;
   row-gap: 1px;
   width: 100%;
-  padding: 8px 10px;
+  // 오른쪽 끝은 세션 메뉴(☰) 버튼이 놓이는 자리
+  padding: 8px 42px 8px 10px;
   border: 0;
   border-radius: var(--r-md);
   background: transparent;
@@ -120,12 +120,6 @@ const badge = computed(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-}
-
-.tok {
-  font-family: var(--font-code);
-  font-size: var(--fs-xs);
-  color: var(--text-3);
 }
 
 .badge {
