@@ -39,10 +39,7 @@ ClaudeBoard는 이 세 가지를 한 화면에서 해결하는 "관제탑"입니
 | --- | --- |
 | ![작업 중](docs/screenshots/2-working.png)<br>**작업 중**: 실행 중인 세션은 주황 펄스와 도구 이름으로 표시됩니다. | ![작업 완료](docs/screenshots/7-done.png)<br>**작업 완료**: 대기로 돌아오면 완료 토스트가 뜹니다. |
 | ![세션 메뉴](docs/screenshots/4-terminal.png)<br>**세션 메뉴**: 폴더 줄의 ☰ 버튼에 세션 도구를 모았습니다. | ![명령 팔레트](docs/screenshots/6-palette.png)<br>**명령 팔레트**: ⌘K로 세션 제어와 `@프로젝트 지시문`을 실행합니다. |
-
-모바일 폭에서는 폴더 목록이 위, 터미널이 아래로 쌓입니다.
-
-<img src="docs/screenshots/8-mobile.png" alt="모바일 화면" width="240">
+| ![음성 입력](docs/screenshots/9-voice.png)<br>**음성 입력**: 마이크를 켜면 빨간 펄스가 돌고 인식 중인 말이 아래 자막으로 보입니다. 확정된 문장은 Claude 입력창에 들어갑니다. | <img src="docs/screenshots/8-mobile.png" alt="모바일 화면" width="200"><br>**모바일**: 폴더 목록이 위, 터미널이 아래로 쌓입니다. |
 
 ## 빠른 시작
 
