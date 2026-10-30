@@ -131,8 +131,9 @@ const speech = useSpeech((text, final) => {
   xterm.value?.focus()
 })
 const caption = computed(() => speech.error.value || (speech.listening.value ? interim.value || '듣고 있습니다…' : ''))
-// 세션을 바꾸거나 승인 대기로 넘어가면 듣기를 멈춘다
-watch(() => [item.value?.project.id, s.status.value === 'REQUIRES_APPROVAL'], () => speech.stop())
+// 세션을 바꾸거나 승인 대기로 넘어가면 듣기를 멈춘다.
+// 배열을 돌려주면 상태가 바뀔 때마다(말한 내용이 입력돼 THINKING 으로 바뀔 때도) 새 배열이라 매번 발동하므로 문자열 키로 비교한다
+watch(() => `${item.value?.project.id}|${s.status.value === 'REQUIRES_APPROVAL'}`, () => speech.stop())
 
 const isRunning = (x: SessionItem): boolean => x.session?.process === 'running' || x.session?.process === 'starting'
 
