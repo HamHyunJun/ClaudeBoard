@@ -1,5 +1,5 @@
 <template>
-  <section class="work" :aria-label="item ? `${item.project.name} 터미널` : '터미널'">
+  <section class="work" :aria-label="item ? `${item.project.name} 터미널` : '터미널'" @keydown.capture="onTermEnter">
     <header class="tabbar">
       <div ref="tabsEl" class="tabs" role="tablist" aria-label="열린 세션" @keydown="onTabKey">
         <span class="tab-marker" :class="{ ready: tabMarkerReady }" :style="tabMarkerStyle" aria-hidden="true" />
@@ -127,9 +127,16 @@ const speech = useSpeech((text, final) => {
   const { text: body, submit } = splitSubmit(text)
   if (submit && body) cmd.prompt(id, body)
   else if (submit) cmd.input(id, '\r')
+  // 말로 전송했으면 듣기도 끝낸다. 이어서 말하려면 다시 켠다
+  if (submit) speech.stop()
   else if (body) cmd.input(id, body.replace(/[\r\n]+/g, ' '))
   xterm.value?.focus()
 })
+// 터미널에서 Enter 로 전송하면 듣기도 끝낸다 (한글 조합 중 Enter 와 Shift+Enter 줄바꿈은 전송이 아니다)
+const onTermEnter = (e: KeyboardEvent): void => {
+  if (e.key !== 'Enter' || e.shiftKey || e.isComposing || !speech.listening.value) return
+  if ((e.target as HTMLElement).closest('.xterm')) speech.stop()
+}
 const caption = computed(() => speech.error.value || (speech.listening.value ? interim.value || '듣고 있습니다…' : ''))
 // 세션을 바꾸거나 승인 대기로 넘어가면 듣기를 멈춘다.
 // 배열을 돌려주면 상태가 바뀔 때마다(말한 내용이 입력돼 THINKING 으로 바뀔 때도) 새 배열이라 매번 발동하므로 문자열 키로 비교한다
