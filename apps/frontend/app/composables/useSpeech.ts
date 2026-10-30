@@ -38,6 +38,10 @@ export function splitSubmit(text: string): { text: string; submit: boolean } {
   return m ? { text: text.slice(0, m.index).trim(), submit: true } : { text, submit: false }
 }
 
+// 다시 시작해도 해결되지 않는 오류
+const FATAL = new Set(['not-allowed', 'service-not-allowed', 'audio-capture'])
+const RESTART_MS = 300
+
 const ERRORS: Record<string, string> = {
   'not-allowed': '마이크 권한이 필요합니다. 주소창의 사이트 설정에서 허용해 주세요.',
   'service-not-allowed': '마이크 권한이 필요합니다. 주소창의 사이트 설정에서 허용해 주세요.',
@@ -58,13 +62,15 @@ export function useSpeech(onText: (text: string, final: boolean) => void): UseSp
   const listening = ref(false)
   const error = ref('')
   let rec: Recognition | undefined
-  // 사용자가 끄기 전에는 브라우저가 인식을 끝내도(무음·시간 제한) 이어서 다시 시작한다
+  // 사용자가 끄기 전에는 브라우저가 인식을 끝내도(무음·시간 제한·네트워크) 이어서 다시 시작한다
   let wanted = false
   let restartable = true
 
   const stop = (): void => {
     wanted = false
     rec?.stop()
+    // 재시작 대기 중에는 onend 가 다시 오지 않으므로 여기서 바로 내린다
+    listening.value = false
   }
 
   const start = (): void => {
@@ -77,23 +83,30 @@ export function useSpeech(onText: (text: string, final: boolean) => void): UseSp
     rec.continuous = true
     rec.interimResults = true
     rec.onresult = (e) => {
+      // 네트워크 오류 뒤 다시 들리기 시작하면 오류 표시를 지운다
+      error.value = ''
       const last = e.results[e.results.length - 1]
       if (last) onText(last[0]?.transcript.trim() ?? '', last.isFinal)
     }
     rec.onerror = (e) => {
       // 말이 없어 끝난 경우는 오류로 보지 않는다
       if (e.error !== 'no-speech' && e.error !== 'aborted') error.value = ERRORS[e.error] ?? `음성 인식 오류: ${e.error}`
-      // 권한·네트워크 오류나 오래 말이 없을 때는 무한 재시작하지 않는다
-      if (e.error !== 'aborted') restartable = false
+      // 권한·마이크 문제는 다시 시작해도 소용없으므로 거기서 멈춘다. 그 밖의 끊김(무음·네트워크·시간 제한)은 계속 이어 듣는다
+      if (FATAL.has(e.error)) restartable = false
     }
     rec.onend = () => {
       if (wanted && restartable) {
-        try {
-          rec?.start()
-          return
-        } catch {
-          // 이미 시작 중이면 그대로 끝낸다
-        }
+        // 바로 다시 시작하면 오류가 계속될 때 빠르게 반복되므로 잠시 쉰다
+        setTimeout(() => {
+          if (!wanted) return
+          try {
+            rec?.start()
+          } catch {
+            wanted = false
+            listening.value = false
+          }
+        }, RESTART_MS)
+        return
       }
       wanted = false
       listening.value = false
