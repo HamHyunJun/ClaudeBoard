@@ -91,7 +91,9 @@
           </svg>
         </button>
         <Transition name="caption">
-        <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">{{ caption }}</p>
+        <p v-if="caption" class="caption" :class="{ err: speech.error.value }" role="status">
+          <span v-if="isQuestion" class="q-chip">질문</span>{{ caption }}
+        </p>
         </Transition>
       </div>
       </Transition>
@@ -138,6 +140,8 @@ const onTermEnter = (e: KeyboardEvent): void => {
   if ((e.target as HTMLElement).closest('.xterm')) speech.stop()
 }
 const caption = computed(() => speech.error.value || (speech.listening.value ? interim.value || '듣고 있습니다…' : ''))
+// 인식 결과가 물음표로 끝나면 질문으로 표시한다 (입력되는 글자는 그대로)
+const isQuestion = computed(() => !speech.error.value && /[?？]$/.test(interim.value))
 // 세션을 바꾸거나 승인 대기로 넘어가면 듣기를 멈춘다.
 // 배열을 돌려주면 상태가 바뀔 때마다(말한 내용이 입력돼 THINKING 으로 바뀔 때도) 새 배열이라 매번 발동하므로 문자열 키로 비교한다
 watch(() => `${item.value?.project.id}|${s.status.value === 'REQUIRES_APPROVAL'}`, () => speech.stop())
@@ -524,6 +528,14 @@ defineExpose({ focus: () => xterm.value?.focus(), toggleVoice })
   &.err {
     color: var(--approval);
   }
+}
+.q-chip {
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--ink-3);
+  color: var(--text);
+  font-size: var(--fs-xs);
 }
 .mic {
   @include pressable;
